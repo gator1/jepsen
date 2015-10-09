@@ -1,0 +1,3 @@
+safe: true
+highligther: pygments
+markdown: kramdown
