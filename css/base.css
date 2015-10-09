@@ -4,6 +4,8 @@ body {
   text-align: justify;
   text-justify: inter-word;
   padding: 1em;
+  background: url("/images/background.jpg");
+  color: #3D3123;
 }
 
 @font-face {
@@ -36,11 +38,23 @@ h1, h2, h3 {
   margin-top: 1em;
   margin-bottom: 0.5em;
 }
-h1 { font-size: 200%; }
+h1 {
+  font-size: 260%;
+  text-align: center;
+}
+h1:first-child { margin-top: 0; }
 h2 { font-size: 160%; }
 h3 { font-size: 120%; }
 
 p {
   margin-top: 1em;
   margin-bottom: 1em;
+}
+
+.sheet {
+  width: 400pt;
+  margin: 1em auto;
+  padding: 1em;
+  background: url("/images/cream.jpg");
+  box-shadow: 0 1px 10px rgba(0,0,0,0.1);
 }
