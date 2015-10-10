@@ -44,7 +44,7 @@ h1 {
   text-align: center;
 }
 h1:first-child { margin-top: 0.2em; }
-h2 { font-size: 155%; }
+h2 { font-size: 150%; }
 h3 { font-size: 120%; }
 
 p {
