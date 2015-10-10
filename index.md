@@ -5,12 +5,14 @@ layout: default
 
 # Jepsen
 
-## Distributed systems safety analysis
+<iframe width="520" height="293" src="http://www.ustream.tv/embed/recorded/61443262?html5ui" allowfullscreen webkitallowfullscreen scrolling="no" frameborder="0" style="border: 0 none transparent;"></iframe>
+
+## Distributed Systems Safety Analysis
 
 Jepsen is an effort to improve the safety of distributed databases, queues,
 consensus systems, etc. It encompasses a [software
 library](https://github.com/aphyr/jepsen) for systems testing, as well as [blog
-posts](https://aphyr.com/media/tags/jepsen), and [conference
+posts](https://aphyr.com/tags/jepsen), and [conference
 talks](http://www.ustream.tv/recorded/61443262) exploring particular systems'
 failure modes. In each post we explore whether the system lives up to its
 documentation's claims, file new bugs, and suggest recommendations for
