@@ -26,6 +26,24 @@ Jepsen started as a project in my nights and weekends. In February
 [Stripe](http://stripe.com/jobs) hired me to continue Jepsen analyses full
 time; they currently sponsor the project.
 
+## Systems
+
+- [Aerospike 3.5.4](https://aphyr.com/posts/324-call-me-maybe-aerospike)
+- [Cassandra 2.0.0](https://aphyr.com/posts/294-call-me-maybe-cassandra)
+- [Chronos 2.4.0](https://aphyr.com/posts/326-call-me-maybe-chronos)
+- [Elasticsearch 1.1.0](https://aphyr.com/posts/317-call-me-maybe-elasticsearch), [1.5.0](https://aphyr.com/posts/323-call-me-maybe-elasticsearch-1-5-0)
+- [etcd 0.4.1](https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul)
+- [Kafka 0.8 beta](https://aphyr.com/posts/293-call-me-maybe-kafka)
+- [MariaDB Galera Cluster 10.1](https://aphyr.com/posts/327-call-me-maybe-mariadb-galera-cluster)
+- [MongoDB 2.4.3](https://aphyr.com/posts/284-call-me-maybe-mongodb), [2.6.7](https://aphyr.com/posts/322-call-me-maybe-mongodb-stale-reads)
+- [NuoDB 1.2](https://aphyr.com/posts/292-call-me-maybe-nuodb)
+- [Percona XtraDB Cluster 5.6.25](https://aphyr.com/posts/328-call-me-maybe-percona-xtradb-cluster)
+- [RabbitMQ 3.3.0](https://aphyr.com/posts/315-call-me-maybe-rabbitmq)
+- [Redis 2.6.13](https://aphyr.com/posts/283-call-me-maybe-redis), [proposed wait feature](https://aphyr.com/posts/307-call-me-maybe-redis-redux)
+- [Riak 1.2.1](https://aphyr.com/posts/285-call-me-maybe-riak)
+- [Zookeeper 3.4.5](https://aphyr.com/posts/291-call-me-maybe-zookeeper)
+
+
 ## Techniques
 
 Jepsen occupies a particular niche of the correctness testing landscape. We
