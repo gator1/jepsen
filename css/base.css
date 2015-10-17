@@ -52,6 +52,16 @@ p {
   margin-bottom: 1em;
 }
 
+td {
+  padding: 0.2em;
+}
+td:first-child {
+  padding-left: 0;
+}
+td:last-child {
+  padding-right: 0;
+}
+
 .sheet {
   width: 520px;
   margin: 1em auto;
