@@ -3,7 +3,7 @@ title: Jepsen
 layout: default
 ---
 
-# Jepsen
+# JEPSEN
 
 <iframe width="520" height="293" src="http://www.ustream.tv/embed/recorded/61443262?html5ui" allowfullscreen webkitallowfullscreen scrolling="no" frameborder="0" style="border: 0 none transparent;"></iframe>
 
@@ -26,9 +26,9 @@ Jepsen started as a project in my nights and weekends. In February
 [Stripe](http://stripe.com/jobs) hired me to continue Jepsen analyses full
 time; they currently sponsor the project.
 
-## Systems
+## Analyses
 
-|---|---|
+|---|---:|
 | Aerospike     | [3.5.4](https://aphyr.com/posts/324-call-me-maybe-aerospike) |
 | Cassandra     | [2.0.0](https://aphyr.com/posts/294-call-me-maybe-cassandra) |
 | Chronos       | [2.4.0](https://aphyr.com/posts/326-call-me-maybe-chronos) |

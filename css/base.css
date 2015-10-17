@@ -1,4 +1,3 @@
-
 @font-face {
     font-family: 'museo_slab500';
     src: url('/fonts/Museo_Slab_500_2-webfont.eot');
@@ -29,7 +28,7 @@ body {
   text-align: justify;
   text-justify: inter-word;
   padding: 1em;
-  background: url("/images/background.jpg");
+  background: #FFF;
   color: #3D3123;
 }
 
@@ -41,10 +40,12 @@ h1, h2, h3 {
 }
 h1 {
   font-size: 260%;
-  text-align: center;
+  text-align: right;
 }
-h1:first-child { margin-top: 0.2em; }
-h2 { font-size: 150%; }
+h1:first-child { margin-top: 0.0em; }
+h2 {
+  font-size: 150%;
+}
 h3 { font-size: 120%; }
 
 p {
@@ -53,7 +54,7 @@ p {
 }
 
 td {
-  padding: 0.2em;
+  padding: 0.25em;
 }
 td:first-child {
   padding-left: 0;
@@ -66,6 +67,4 @@ td:last-child {
   width: 520px;
   margin: 1em auto;
   padding: 20px;
-  background: url("/images/cream.jpg");
-  box-shadow: 0 1px 10px rgba(0,0,0,0.1);
 }
