@@ -22,9 +22,10 @@ Jepsen pushes vendors to make accurate claims and test their software
 rigorously, helps users choose databases and queues that fit their needs, and
 teaches everyone how to evaluate distributed systems correctness.
 
-Jepsen started as a project in my nights and weekends. In February
-[Stripe](http://stripe.com/jobs) hired me to continue Jepsen analyses full
-time; they currently sponsor the project.
+Jepsen started as a project in my nights and weekends. From February to
+November of 2015 I continued analyses full time at
+[Stripe](http://stripe.com/jobs). I'm now continuing Jepsen research as an
+independent contractor.
 
 ## Analyses
 
@@ -68,4 +69,7 @@ emphasize:
 
 ## Request a test
 
-Would you like to see a system analyzed? Send an email to [aphyr+jepsen@aphyr.com](mailto:aphyr+jepsen@aphyr.com).
+Would you like to see a system analyzed? Send an email to
+[aphyr+jepsen@aphyr.com](mailto:aphyr+jepsen@aphyr.com) and we can work out a
+timeline and contract for the system of your choice. I'm available for hourly
+consulting or for a full analysis and writeup, which take a couple months.
