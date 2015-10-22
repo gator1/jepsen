@@ -36,7 +36,7 @@ independent contractor.
 | Elasticsearch | [1.1.0](https://aphyr.com/posts/317-call-me-maybe-elasticsearch), [1.5.0](https://aphyr.com/posts/323-call-me-maybe-elasticsearch-1-5-0) |
 | etcd          | [0.4.1](https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul) |
 | Kafka         | [0.8 beta](https://aphyr.com/posts/293-call-me-maybe-kafka) |
-| MariaDB Galera | [10.1](https://aphyr.com/posts/327-call-me-maybe-mariadb-galera-cluster) |
+| MariaDB Galera | [10.0](https://aphyr.com/posts/327-call-me-maybe-mariadb-galera-cluster) |
 | MongoDB       | [2.4.3](https://aphyr.com/posts/284-call-me-maybe-mongodb), [2.6.7](https://aphyr.com/posts/322-call-me-maybe-mongodb-stale-reads) |
 | NuoDB         | [1.2](https://aphyr.com/posts/292-call-me-maybe-nuodb) |
 | Percona XtraDB Cluster | [5.6.25](https://aphyr.com/posts/328-call-me-maybe-percona-xtradb-cluster) |
