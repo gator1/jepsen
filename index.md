@@ -40,6 +40,7 @@ independent contractor.
 | Percona XtraDB Cluster | [5.6.25](https://aphyr.com/posts/328-call-me-maybe-percona-xtradb-cluster) |
 | RabbitMQ      | [3.3.0](https://aphyr.com/posts/315-call-me-maybe-rabbitmq) |
 | Redis         | [2.6.13](https://aphyr.com/posts/283-call-me-maybe-redis), [experimental WAIT](https://aphyr.com/posts/307-call-me-maybe-redis-redux) |
+| RethinkDB     | [2.1.5](https://aphyr.com/posts/329-jepsen-rethinkdb-2-1-5) |
 | Riak          | [1.2.1](https://aphyr.com/posts/285-call-me-maybe-riak) |
 | Zookeeper     | [3.4.5](https://aphyr.com/posts/291-call-me-maybe-zookeeper) |
 
