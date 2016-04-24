@@ -69,6 +69,6 @@ emphasize:
 ## Request a test
 
 Would you like to see a system analyzed? Send an email to
-[aphyr+jepsen@aphyr.com](mailto:aphyr+jepsen@aphyr.com) and we can work out a
+[aphyr@jepsen.io](mailto:aphyr@jepsen.io) and we can work out a
 timeline and contract for the system of your choice. I'm available for hourly
 consulting or for a full analysis and writeup, which take a couple months.
