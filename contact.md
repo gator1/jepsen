@@ -3,8 +3,6 @@ title: Contact
 layout: default
 ---
 
-## Contact
-
 Would you like to see a system analyzed? Send an email to
 [aphyr@jepsen.io](mailto:aphyr@jepsen.io) and we can work out a timeline and
 contract for the system of your choice. A full analysis and writeup typically
