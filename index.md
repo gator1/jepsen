@@ -31,6 +31,7 @@ independent contractor.
 | Aerospike     | [3.5.4](https://aphyr.com/posts/324-call-me-maybe-aerospike) |
 | Cassandra     | [2.0.0](https://aphyr.com/posts/294-call-me-maybe-cassandra) |
 | Chronos       | [2.4.0](https://aphyr.com/posts/326-call-me-maybe-chronos) |
+| Crate         | [0.54.9](https://aphyr.com/posts/332-jepsen-crate-0-54-9-version-divergence) |
 | Elasticsearch | [1.1.0](https://aphyr.com/posts/317-call-me-maybe-elasticsearch), [1.5.0](https://aphyr.com/posts/323-call-me-maybe-elasticsearch-1-5-0) |
 | etcd          | [0.4.1](https://aphyr.com/posts/316-call-me-maybe-etcd-and-consul) |
 | Kafka         | [0.8 beta](https://aphyr.com/posts/293-call-me-maybe-kafka) |
