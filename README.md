@@ -41,6 +41,31 @@ Your local machine needs a JVM and leiningen 2 installed. Probably want JNA for 
 sudo apt-get install openjdk-8-jre openjdk-8-jre-headless libjna-java
 ```
 
+Gator:
+jdk 8 doesn't work. install Oracle java 8:
+http://link2linux.blogspot.com/2015/07/install-oracle-jdk-8-on-debian-81-jessie.html
+
+I changed /etc/apt/sourcelst as
+# deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main
+
+# deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main
+
+deb http://ftp.debian.org/debian/ jessie main non-free
+
+deb http://security.debian.org/ jessie/updates main contrib
+deb-src http://security.debian.org/ jessie/updates main contrib
+
+# for open jdk 1.8, problem with appletviewer
+deb http://http.debian.net/debian jessie-backports main
+
+deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main
+deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main
+
+----------
+this works to install oracle java: apt-get install oracle-java8-installer
+
+
+
 For your db nodes, you'll need some (I use five) debian boxes. I run debian
 jessie, but some DBs don't need the latest packages so you might get away with
 an older distribution, or possibly ubuntu. Each one should be accessible from

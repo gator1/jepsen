@@ -143,6 +143,15 @@ cat ~/.ssh/id_rsa.pub
 
 and add it to root's `authorized_keys` (in containers):
 
+Gator:
+ssh-copy-id -i ./ssh/id_rsa.pub root@n1
+or
+ssh-copy-id root@n1
+this is much better than copy and paste 
+No mistake
+containber has /root/.ssh/authauthorized_keys setup
+....
+
 ```sh
 apt-get install -y sudo vim
 mkdir ~/.ssh
@@ -157,8 +166,6 @@ Enable password-based login for root (used by jsch):
 sed  -i 's,^PermitRootLogin .*,PermitRootLogin yes,g' /etc/ssh/sshd_config
 systemctl restart sshd
 ```
-
-[Remove systemd](http://without-systemd.org/wiki/index.php/How_to_remove_systemd_from_a_Debian_jessie/sid_installation).
 
 Detach from the container with Control+a q, and repeat for the remaining nodes.
 
