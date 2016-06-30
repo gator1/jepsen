@@ -36,6 +36,8 @@ lxc-create -n n5 -t debian -- --release jessie
 ```
 
 Note the root passwords.
+Each command returns something like "... Root password is 'BUldsMOY', please
+change !". This password will be used when logging into the container later.
 
 Edit /var/lib/lxc/n1/config and friends, changing the network hwaddr to something unique. I suggest using sequential mac addresses for n1, n2, n3, ....
 
@@ -116,6 +118,12 @@ Fire up each VM:
 jepsen-start
 ```
 
+Make sure all nodes are up
+
+```sh
+sudo lxc-ls -f
+```
+
 Log into the containers, (may have to specify tty 0 to use console correctly) e.g.,:
 
 ```sh
@@ -135,9 +143,10 @@ And set your root password--I use `root`/`root` by default in Jepsen.
 passwd
 ```
 
-Copy your SSH key (on host):
+Generate and copy your SSH key (on host):
 
 ```sh
+ssh-keygen -t rsa
 cat ~/.ssh/id_rsa.pub
 ```
 
@@ -187,6 +196,7 @@ for n in $(seq 1 5); do ssh-keyscan -t rsa n$n; done >> ~/.ssh/known_hosts
 And check that you can SSH to the nodes
 
 ```sh
+sudo apt-get install clusterssh
 cssh n1 n2 n3 n4 n5
 ```
 
