@@ -133,15 +133,15 @@
          (with-open [w (io/writer n)]
            (doseq [l (line-seq r)]
              ; fix for zookeeper test history file
-             (let [[w1 w2 w3 w4 w5] (str/split l #"\s+")]
-                  (->> (if (= w1 ":nemesis")
-                         l
-                         (if (= (first w4) \[)
-                           (str/join " " [w1 w2 w3 w4 w5])
-                           (str/join " " [w1 w2 w3 w4])))
-                       ((fn [s]
-                          (.write w (str "[" s "]\n"))))))))))
-;             (.write w (str "[" l "]\n"))))))
+             ;(let [[w1 w2 w3 w4 w5] (str/split l #"\s+")]
+             ;     (->> (if (= w1 ":nemesis")
+             ;            l
+             ;            (if (= (first w4) \[)
+             ;              (str/join " " [w1 w2 w3 w4 w5])
+             ;              (str/join " " [w1 w2 w3 w4])))
+             ;          ((fn [s]
+             ;             (.write w (str "[" s "]\n"))))))))))
+             (.write w (str "[" l "]\n"))))))
   )
 
 (defn cas-test
