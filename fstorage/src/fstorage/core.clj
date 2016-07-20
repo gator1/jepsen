@@ -20,8 +20,7 @@
   (:import (java.io PushbackReader)))
 
 
-(def fsnid "/root/fstorage/nid")
-(def fsreg "/root/fstorage/reg")
+(def fsreg "/root/jepsen-register")
 
 (defn node-ids
   [test]
@@ -40,7 +39,7 @@
     (setup! [_ test node]
       ;(info node "installing db")
       ;(c/su
-      (c/exec :echo (node-id test node) :> fsnid)
+      (c/exec :echo (node-id test node) :> "/root/jepsen-nid")
       ;)
       )
 
