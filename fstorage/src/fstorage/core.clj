@@ -149,8 +149,11 @@
   (let [history (read-history (str file ".edn"))
         model (cas-register 0)
         analysis (linear/analysis model history)]
-       (linear.report/render-analysis! history analysis (str file ".svg"))
-       ))
+    (if (= false (:valid? analysis))
+      (do (println "Analysis failed, generating .svg")
+          (linear.report/render-analysis! history analysis (str file ".svg")))
+      (println "Analysis passed"))
+    ))
 
 (defn analyse
   [file]
