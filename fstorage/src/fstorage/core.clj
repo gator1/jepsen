@@ -17,10 +17,13 @@
             [knossos.model :refer [register cas-register]]
             [knossos.linear :as linear]
             [knossos.linear.report :as linear.report])
+  (:use     [clojure.java.shell :only [sh]])
   (:import (java.io PushbackReader)))
 
 
-(def fsreg "/root/jepsen-register")
+(def fsdev "/home/gary/jepsen/fstorage/data/testdev")
+(def data "/home/gary/jepsen/fstorage/data/temp")
+(def offset 2)
 
 (defn node-ids
   [test]
@@ -48,23 +51,24 @@
     ))
 
 (defn get-value
-  [session node]
-  (->> (c/exec :cat fsreg)
-       edn/read-string
-       (c/with-session node session)))
+  [device, offset]
+  (->> (str "cat " data)
+       (str "dd if=" device " skip=" offset " of=" data " bs=2 count=1;")
+       (sh "sh" "-c")
+       :out
+       edn/read-string))
 
 (defn set-value
-  [session node value]
-   (c/with-session node session (c/exec :echo value :> fsreg)))
+  [device, offset, value]
+  (->> (str "dd if=" data " of=" device " seek=" offset " bs=2 count=1")
+       (str "echo " value " > " data " ;")
+       (sh "sh" "-c")))
 
 (defn client
   [conn a]
   (reify client/Client
     (setup! [_ test node]
-      (let [session ((:sessions test) node)]
-           ; in real test only need to init register on one node?
-           (c/with-session node session (c/exec :echo 0 :> fsreg))
-           (client session node)))
+      (client fsdev, offset))
 
     (invoke! [this test op]
       (timeout 5000 (assoc op :type :info, :error :timeout)
@@ -90,9 +94,10 @@
   []
   tests/noop-test
   (assoc tests/noop-test
-    :nodes [:n1 :n2 :n3]
+    :nodes [:n1 :n2 :n3 :n4]
     :name "fstorage"
     ;:db (db "")
+    :concurrency 1
     :client (client nil nil)
     :nemesis (nemesis/partition-random-halves)
     ;:nemesis (nemesis/partition-random-node)
@@ -144,7 +149,7 @@
              (.write w (str "[" l "]\n"))))))
   )
 
-(defn cas-test
+(defn linear-test
   [file]
   (let [history (read-history (str file ".edn"))
         model (cas-register 0)
@@ -158,7 +163,7 @@
 (defn analyse
   [file]
    (convert-to-edn (str file ".txt"))
-   (cas-test file)
+   (linear-test file)
    )
 
 

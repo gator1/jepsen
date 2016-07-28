@@ -1,7 +1,20 @@
 (ns fstorage.core-test
-  (:require [clojure.test :refer :all]
-            [fstorage.core :refer :all]))
+  (:require [clojure.test  :refer :all]
+            [jepsen.core   :as jepsen]
+            [fstorage.core :as fs]))
 
-(deftest a-test
-  (testing "FIXME, I fail."
-    (is (= 0 1))))
+; fstorage consistency testing
+(deftest fscp-test
+  (is (:valid? (:results (jepsen/run! (fs/fstorage-test))))))
+
+; fstorage availability testing
+(deftest fsap-test
+  ())
+
+; fstorage performance testing
+(deftest fsperf-test
+  ())
+
+; fstorage client-server consistency testing
+(deftest fscscp-test
+  ())
