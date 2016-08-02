@@ -4,19 +4,20 @@
             [clojure.edn :as edn]
             [clojure.string :as str]
             [jepsen [core :as jepsen]
-                    [db :as db]
-                    ;[net       :as net]
-                    [control :as c]
-                    [client :as client]
-                    [nemesis :as nemesis]
-                    [generator :as gen]
-                    [checker :as checker]
-                    [tests :as tests]
-                    [util :refer [timeout local-time real-pmap with-thread-name]]
-                    [store :as store]]
+             [db :as db]
+             ;[net       :as net]
+             [control :as c]
+             [client :as client]
+             [nemesis :as nemesis]
+             [generator :as gen]
+             [checker :as checker]
+             [tests :as tests]
+             [util :refer [timeout local-time real-pmap with-thread-name]]
+             [store :as store]]
             [knossos.model :refer [register cas-register]]
             [knossos.linear :as linear]
-            [knossos.linear.report :as linear.report])
+            [knossos.linear.report :as linear.report]
+            [knossos.history :as history])
   (:use     [clojure.java.shell :only [sh]])
   (:import (java.io PushbackReader)))
 
@@ -86,6 +87,33 @@
 
     (teardown! [_ test])))
 
+(defn split-n2
+  [nodes]
+  (let [coll (remove (fn [x] (= x :n2)) nodes)]
+    [[:n2], coll]))
+
+(defn partition-node-n2
+  []
+  (nemesis/partitioner (comp nemesis/complete-grudge split-n2)))
+
+(defn total-time
+  [history]
+  (loop [pairs (history/pairs history)
+         total 0]
+    (if (nil? pairs)
+      {:total-time total}
+      (let [[invoke complete] (first pairs)
+            pairs (next pairs)]
+        (if (= :invoke (:type invoke))
+          (recur pairs (+ total (- (:time complete) (:time invoke))))
+          (recur pairs total)))))
+  )
+
+(def fs-checker
+  (reify checker/Checker
+    (check [_ test model history opts]
+      (merge {:valid? true} (total-time history)))))
+
 (defn r   [_ _] {:type :invoke, :f :read, :value nil})
 (defn w   [_ _] {:type :invoke, :f :write, :value (rand-int 5)})
 (defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5)(rand-int 5)]})
@@ -109,9 +137,12 @@
                                        {:type :info, :f :start}
                                        (gen/sleep 5)
                                        {:type :info, :f :stop}])))
-                    (gen/time-limit 10))
+                    (gen/time-limit 15))
     :model (cas-register 0)
-    :checker checker/linearizable)
+    :checker (checker/compose
+               {:perf   (checker/perf)
+                :linear checker/linearizable}))
+    ;:checker checker/linearizable)
   )
 
 (defn read-history
@@ -160,12 +191,32 @@
       (println "Analysis passed"))
     ))
 
+(defn pair-test
+  [file]
+  (let [history (read-history (str file ".edn"))]
+    (println (history/pairs history))))
+
 (defn analyse
   [file]
    (convert-to-edn (str file ".txt"))
    (linear-test file)
    )
 
+(defn perf-test
+  [t]
+  (let [test (assoc (fstorage-test)
+               :nemesis (partition-node-n2)
+               :generator (->> w
+                               (gen/stagger 1)
+                               ;(gen/clients)
+                               (gen/nemesis
+                                 (gen/seq (cycle [(gen/sleep t)
+                                                  {:type :info, :f :start}
+                                                  (gen/sleep t)
+                                                  {:type :info, :f :stop}])))
+                               (gen/limit 100))
+               :checker fs-checker)]
+    (jepsen/run! test)))
 
 (defn -main
   "Test entry."
