@@ -13,6 +13,7 @@
     :name "fscscp-test"
     :nodes [:n1 :n2 :n3]
     :concurrency 5
+    :client (client)
     :nemesis (partition-clients)
     :generator (gen/phases
                  (->> add

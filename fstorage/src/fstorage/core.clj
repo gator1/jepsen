@@ -158,6 +158,7 @@
 ; cap test
 (defn cap-test
   []
+  (set-reg 0)
   (let [test (assoc tests/noop-test
                :nodes [:n1 :n2 :n3 :n4]
                :name "fscap-test"
@@ -189,6 +190,7 @@
                :node [:n1 :n2 :n3]
                :name "fsperf-test"
                :concurrency 1
+               :client (client)
                :nemesis (partition-node-n2)
                :generator (->> w
                                (gen/stagger 1)
@@ -205,6 +207,7 @@
 ; cscp test
 (defn cscp-test
   []
+  (set-reg 0)
   (let [test (assoc tests/noop-test
                :name "fscscp-test"
                :nodes [:n1 :n2 :n3]
@@ -228,7 +231,6 @@
                             (gen/sleep 5)
                             (gen/clients (gen/once r)))
                :checker checker/counter)]
-    (set-reg 0)
     (jepsen/run! test)))
 
 ; run all tests

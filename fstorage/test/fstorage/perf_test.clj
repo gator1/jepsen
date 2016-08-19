@@ -11,6 +11,7 @@
   (assoc tests/noop-test
     :name "fsperf-test"
     :concurrency 1
+    :client (client)
     :nemesis (partition-node-n2)
     :generator (->> w
                     (gen/stagger 1)

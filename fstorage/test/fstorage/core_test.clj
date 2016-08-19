@@ -15,6 +15,7 @@
     :nodes [:n1 :n2 :n3 :n4]
     :name "fscap-test"
     :concurrency 3
+    :client (client)
     :nemesis (nemesis/partition-random-halves)
     :generator (->> (gen/mix [r w cas])
                     (gen/stagger 1)
@@ -32,6 +33,7 @@
 
 ; fstorage consistency testing
 (deftest fscp-test
+  (set-reg 0)
   (is (:valid? (:results (jepsen/run! (fscap-map))))))
 
 ; fstorage availability testing
