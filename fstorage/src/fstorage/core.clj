@@ -26,6 +26,8 @@
 (def pwd-sudo "ubuntu")
 (def node-ip  "1.1.1.1")
 
+(def iter (atom 0))
+
 ; initialize database on each node
 (defn db
   [version]
@@ -89,16 +91,47 @@
     (teardown! [_ test])))
 
 
-; partition node :n2 for perf test
-(defn split-n2
+; partition node for perf test
+(defn split-node
+  [n nodes]
+  (let [coll (remove (fn [x] (= x n)) nodes)]
+    [[n], coll]))
+
+; cut off secondary nodes by turns
+; assure first element of nodes is primary node
+(defn split-node-seq
   [nodes]
-  (let [coll (remove (fn [x] (= x :n2)) nodes)]
-    [[:n2], coll]))
+  (let [num (dec (count nodes))
+        i   (rem @iter num)]
+    (swap! iter inc)
+    (split-node (nth nodes (inc i)) nodes)))
 
-(defn partition-node-n2
+; assure last element of nodes is control node
+(defn split-node-ctrl
+  [nodes]
+  (let [num (count nodes)
+        i   (rem @iter 2)]
+    (swap! iter inc)
+    (if (zero? i)
+      (split-node (nth nodes 1) nodes)
+      (split-node (nth nodes (dec num)) nodes))))
+
+; partition specific node
+(defn partition-node
+  [n]
+  (nemesis/partitioner (comp nemesis/complete-grudge (partial split-node n))))
+
+; partition secondary nodes in turn
+(defn partition-node-seq
   []
-  (nemesis/partitioner (comp nemesis/complete-grudge split-n2)))
+  (reset! iter 0)
+  (nemesis/partitioner (comp nemesis/complete-grudge split-node-seq)))
 
+; partition one secondary node and control node in turn
+(defn partition-node-ctrl
+  []
+  (reset! iter 0)
+  (nemesis/partitioner (comp nemesis/complete-grudge split-node-ctrl)))
 
 ; partition clients host
 (defn sudo-cmd
@@ -133,6 +166,17 @@
     (teardown! [this test]
       (heal-net))))
 
+; generate n normal operations
+(defn oper-limit
+  [n gen]
+  (let [life (atom (inc n))]
+    (reify gen/Generator
+      (op [_ test process]
+        (let [op (gen/op gen test process)]
+          (if (= :invoke (:type op))
+            (swap! life dec))
+          (when (pos? @life)
+            op))))))
 
 ; checker for perf test
 (defn total-time

@@ -118,16 +118,19 @@
 (defn perf-test
   [t]
   (let [test (assoc (fstorage-test)
-               :nemesis (partition-node-n2)
+               :nemesis (partition-node :n2)
+               ;:nemesis (partition-node-seq)
                :generator (->> w
                                (gen/stagger 1)
                                ;(gen/clients)
                                (gen/nemesis
                                  (gen/seq (cycle [(gen/sleep t)
                                                   {:type :info, :f :start}
+                                                  ;(gen/sleep t)
+                                                  ;{:type :info, :f :start}
                                                   (gen/sleep t)
                                                   {:type :info, :f :stop}])))
-                               (gen/limit 10))
+                               (real-limit 20))
                :checker perf-checker)]
     (jepsen/run! test)))
 
@@ -141,8 +144,8 @@
                ;:db (db "")
                :concurrency 3
                :client (client)
-               :nemesis (nemesis/partition-random-halves)
-               ;:nemesis (nemesis/partition-random-node)
+               ;:nemesis (nemesis/partition-random-halves)
+               :nemesis (nemesis/partition-random-node)
                :generator (->> (gen/mix [r w cas])
                                (gen/stagger 1)
                                ;(gen/clients)
