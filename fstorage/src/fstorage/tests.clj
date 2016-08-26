@@ -81,6 +81,11 @@
   (let [history (read-history (str file ".edn"))]
     (println (history/pairs history))))
 
+(defn checker-test
+  [file]
+  (let [history (read-history (str file ".edn"))]
+    (println (check-block history))))
+
 ; analyse history
 (defn analyse
   [file]
@@ -130,7 +135,7 @@
                                                   ;{:type :info, :f :start}
                                                   (gen/sleep t)
                                                   {:type :info, :f :stop}])))
-                               (real-limit 20))
+                               (oper-limit 20))
                :checker perf-checker)]
     (jepsen/run! test)))
 
@@ -162,18 +167,22 @@
                            :linear checker/linearizable}))]
     (jepsen/run! test)))
 
+;(defn bw [_ _] {:type :invoke, :f :write, :value (rand-nth (range 10))})
+
 ; test cscp
 (defn cscp-test
   []
   (set-reg 0)
+  (reset! iter 0)
   (let [test (assoc tests/noop-test
                :name "fscscp-test"
                :nodes [:n1 :n2 :n3]
                :concurrency 5
-               :client (client)
+               :client (client-blk)
+               ;:client (client)
                :nemesis (partition-clients)
                :generator (gen/phases
-                            (->> add
+                            (->> bw
                                  (gen/stagger 1)
                                  ;(gen/clients)
                                  (gen/nemesis
@@ -182,11 +191,14 @@
                                                     (gen/sleep 2)
                                                     {:type :info, :f :stop}])))
                                  ;(gen/time-limit 15))
-                                 (gen/limit 20))
+                                 (oper-limit 10))
                             (gen/nemesis
                               (gen/once {:type :info :f :stop}))
                             (gen/log "waiting for recover")
                             (gen/sleep 5)
-                            (gen/clients (gen/once r)))
-               :checker checker/counter)]
+                            (->> r
+                                 (gen/stagger 1)
+                                 (gen/clients)
+                                 (read-limit 10)))
+               :checker cs-checker)]
     (jepsen/run! test)))
