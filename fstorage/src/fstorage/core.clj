@@ -216,24 +216,16 @@
       (heal-net))))
 
 ; generate n normal operations
-(defn oper-limit
+(defn op-limit
   [n gen]
-  (let [life (atom (+ n 2))]
+  (let [life (atom (inc n))]
     (reify gen/Generator
       (op [_ test process]
-        (when (pos? (swap! life dec))
-          (let [op (gen/op gen test process)]
-            (if (not= :invoke (:type op))
-              (swap! life inc))
-            op))))))
-
-(defn read-limit
-  [n gen]
-  (let [life' (atom (+ n 2))]
-    (reify gen/Generator
-      (op [_ test process]
-        (when (pos? (swap! life' dec))
-          (gen/op gen test process))))))
+        (if (= process :nemesis)
+          (when (pos? @life)
+            (gen/op gen test process))
+          (when (pos? (swap! life dec))
+            (gen/op gen test process)))))))
 
 ; checker for perf test
 (defn total-time

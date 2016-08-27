@@ -6,7 +6,8 @@
             [jepsen.checker :as checker]
             [jepsen.tests :as tests]
             [jepsen.nemesis :as nemesis]
-            [knossos.model :refer [cas-register]]))
+            [knossos.model :refer [cas-register]])
+  (:use     clojure.tools.logging))
 
 (defn fscap-map
   []
@@ -33,9 +34,10 @@
 
 ; fstorage consistency testing
 (deftest fscp-test
+  (info "consistency test\n")
   (set-reg 0)
   (is (:valid? (:results (jepsen/run! (fscap-map))))))
 
 ; fstorage availability testing
 ;(deftest fsap-test
-;  (testing "Availability"))
+;  (info "availability test\n"))

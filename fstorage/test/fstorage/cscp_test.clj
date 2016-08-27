@@ -4,7 +4,8 @@
             [jepsen.core :as jepsen]
             [jepsen.tests :as tests]
             [jepsen.checker :as checker]
-            [jepsen.generator :as gen]))
+            [jepsen.generator :as gen])
+  (:use     clojure.tools.logging))
 
 (defn fscscp-map
   []
@@ -23,7 +24,7 @@
                                          {:type :info, :f :start}
                                          (gen/sleep 2)
                                          {:type :info, :f :stop}])))
-                      (oper-limit 20))
+                      (op-limit 20))
                  (gen/nemesis
                    (gen/once {:type :info :f :stop}))
                  (gen/log "waiting for recover")
@@ -33,11 +34,13 @@
 
 ; fstorage client-server consistency testing on register write
 (deftest fscscp-test-reg
+  (info "client consistency test - register\n")
   (set-reg 0)
   (is (:valid? (:results (jepsen/run! (fscscp-map))))))
 
 ; fstorage client-server testing based on block write
 (deftest fscscp-test-blk
+  (info "client consistency test - block\n")
   (init-blk 4096)
   (reset! iter 0)
   (let [test (assoc (fscscp-map)
@@ -50,7 +53,7 @@
                                                     {:type :info, :f :start}
                                                     (gen/sleep 2)
                                                     {:type :info, :f :stop}])))
-                                 (oper-limit 20))
+                                 (op-limit 20))
                             (gen/nemesis
                               (gen/once {:type :info :f :stop}))
                             (gen/log "waiting for recover")
@@ -58,6 +61,6 @@
                             (->> r
                                  (gen/stagger 1)
                                  (gen/clients)
-                                 (read-limit 20)))
+                                 (op-limit 20)))
                :checker cs-checker)]
     (is (:valid? (:results (jepsen/run! test))))))

@@ -84,7 +84,7 @@
 (defn checker-test
   [file]
   (let [history (read-history (str file ".edn"))]
-    (println (check-block history))))
+    (println (check-blk history))))
 
 ; analyse history
 (defn analyse
@@ -135,7 +135,7 @@
                                                   ;{:type :info, :f :start}
                                                   (gen/sleep t)
                                                   {:type :info, :f :stop}])))
-                               (oper-limit 20))
+                               (op-limit 20))
                :checker perf-checker)]
     (jepsen/run! test)))
 
@@ -191,7 +191,7 @@
                                                     (gen/sleep 2)
                                                     {:type :info, :f :stop}])))
                                  ;(gen/time-limit 15))
-                                 (oper-limit 10))
+                                 (op-limit 10))
                             (gen/nemesis
                               (gen/once {:type :info :f :stop}))
                             (gen/log "waiting for recover")
@@ -199,6 +199,6 @@
                             (->> r
                                  (gen/stagger 1)
                                  (gen/clients)
-                                 (read-limit 10)))
+                                 (op-limit 10)))
                :checker cs-checker)]
     (jepsen/run! test)))
