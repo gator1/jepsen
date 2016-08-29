@@ -1,40 +1,43 @@
 (ns fstorage.core-test
-  (:require [clojure.test  :refer :all]
-            [jepsen.core      :as jepsen]
+  (:require [clojure.test :refer :all]
+            [fstorage.core :refer :all]
+            [jepsen.core :as jepsen]
             [jepsen.generator :as gen]
-            [fstorage.core    :as fs]))
+            [jepsen.checker :as checker]
+            [jepsen.tests :as tests]
+            [jepsen.nemesis :as nemesis]
+            [knossos.model :refer [cas-register]])
+  (:use     clojure.tools.logging))
+
+(defn fscap-map
+  []
+  tests/noop-test
+  (assoc tests/noop-test
+    :nodes [:n1 :n2 :n3 :n4]
+    :name "fscap-test"
+    :concurrency 3
+    :client (client)
+    :nemesis (nemesis/partition-random-halves)
+    :generator (->> (gen/mix [r w cas])
+                    (gen/stagger 1)
+                    (gen/nemesis
+                      (gen/seq (cycle [(gen/sleep 5)
+                                       {:type :info, :f :start}
+                                       (gen/sleep 5)
+                                       {:type :info, :f :stop}])))
+                    (gen/time-limit 15))
+    :model (cas-register 0)
+    :checker (checker/compose
+               {:perf   (checker/perf)
+                :linear checker/linearizable}))
+  )
 
 ; fstorage consistency testing
 (deftest fscp-test
-  (is (:valid? (:results (jepsen/run! (fs/fstorage-test))))))
+  (info "consistency test\n")
+  (set-reg 0)
+  (is (:valid? (:results (jepsen/run! (fscap-map))))))
 
 ; fstorage availability testing
-(deftest fsap-test
-  ())
-
-(defn run-test
-  [test t]
-  (let [test (assoc test
-               :nemesis (fs/partition-node-n2)
-               :generator (->> fs/w
-                               (gen/stagger 1)
-                               (gen/nemesis
-                                 (gen/seq (cycle [(gen/sleep t)
-                                                  {:type :info, :f :start}
-                                                  (gen/sleep t)
-                                                  {:type :info, :f :stop}])))
-                               (gen/time-limit 15)))]
-       (jepsen/run! test)))
-
-; fstorage performance testing
-; testcase 1: n2 out for 2s
-(deftest fsperf-test-1
-  (is (:valid? (:results (fs/perf-test 2)))))
-
-; testcase 2: n2 out for 6s, which causes downgrade
-(deftest fsperf-test-2
-  (is (:valid? (:results (fs/perf-test 6)))))
-
-; fstorage client-server consistency testing
-(deftest fscscp-test
-  ())
+;(deftest fsap-test
+;  (info "availability test\n"))
