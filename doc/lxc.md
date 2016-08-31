@@ -35,6 +35,17 @@ lxc-create -n n4 -t debian -- --release jessie
 lxc-create -n n5 -t debian -- --release jessie
 ```
 
+Gators:
+got a dell xps 9350 with nvme ssd, only debian stretch works for xps. 
+
+for lxc jessie I messed up the config file and thought that was the cause. 
+It was not but still stretch should use stretch? No  Jessie  lxc has the same
+systemd issue that  paqlgues  ubuntu. Use jessie lxc on the stretch host works. 
+
+```
+lxc-create -n n1 -t debian -- --release stretch
+```
+
 Note the root passwords.
 Each command returns something like "... Root password is 'BUldsMOY', please
 change !". This password will be used when logging into the container later.
@@ -149,6 +160,9 @@ Generate and copy your SSH key (on host):
 ssh-keygen -t rsa
 cat ~/.ssh/id_rsa.pub
 ```
+
+no passphrase otherwise ssh root@n1 will ask for it, defeating the purpose of no
+password login
 
 and add it to root's `authorized_keys` (in containers):
 

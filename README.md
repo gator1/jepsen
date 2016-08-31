@@ -86,6 +86,10 @@ See [lxc.md](doc/lxc.md) for some of my notes on setting up LXC instances.
 Once you've got everything set up, you should be able to run `cd aerospike;
 lein test`, and it'll spit out something like
 
+Gator: run one test only
+lein test :only knossos.op-test 
+
+
 ```clj
 INFO  jepsen.core - Analysis invalid! (ﾉಥ益ಥ）ﾉ ┻━┻
 
