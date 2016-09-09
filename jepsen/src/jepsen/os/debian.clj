@@ -144,8 +144,17 @@
       (maybe-update!)
 
       (c/su
+       ; Install new init before removing current one
+       (install [:sysvinit-core])
+
+       ; Fucking systemd (current init system) breaks a bunch of packages (so remove it)
+       (if (installed? :systemd)
+         (c/exec :apt-get :remove :-y :--purge :--auto-remove :systemd)))
+
         ; Packages!
         (install [:wget
+                  :sysvinit
+                  :sysvinit-utils
                   :curl
                   :vim
                   :man-db
@@ -155,7 +164,7 @@
                   :psmisc
                   :iputils-ping
                   :rsyslog
-                  :logrotate]))
+                  :logrotate])
 
       (meh (net/heal)))
 
