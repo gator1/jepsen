@@ -1,7 +1,7 @@
 FROM kojiromike/dind
 MAINTAINER jake@apache.org
 
-ENV JEPSEN_GIT_URL http://github.com/aphyr/jepsen
+ENV JEPSEN_GIT_URL https://github.com/gator1/jepsen
 ENV LEIN_ROOT true
 
 #
