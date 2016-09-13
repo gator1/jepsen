@@ -100,7 +100,7 @@
                                                   {:type :info, :f :start}
                                                   (gen/sleep 5)
                                                   {:type :info, :f :stop}])))
-                               (gen/time-limit 10))
+                               (gen/time-limit 100))
                :model (cas-register 0)
                ;:checker checker/linearizable)
                :checker (checker/compose
