@@ -328,6 +328,17 @@
             (str "\n\n" (:error (:results test))))))
   test)
 
+(defn analyze [test]
+  (let [res (atom test)
+        _ (info "Analyzing...")
+        runtime (with-out-str (time (swap! res assoc :results (checker/check-safe
+                                                               (:checker test)
+                                                               test
+                                                               (:model test)
+                                                               (:history test)))))]
+    (info (format "Analysis complete. %s" runtime))
+    @res))
+
 (defn run!
   "Runs a test. Tests are maps containing
 
@@ -420,12 +431,5 @@
                                  (info "Run complete, writing")
                                  (when (:name test) (store/save-1! test))
                                  test))))))))
-            _ (info "Analyzing")
-            test (assoc test :results (checker/check-safe
-                                        (:checker test)
-                                        test
-                                        (:model test)
-                                        (:history test)))]
-
-        (info "Analysis complete")
+            test (analyze test)]
         (when (:name test) (store/save-2! test))))))
