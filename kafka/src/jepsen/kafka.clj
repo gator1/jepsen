@@ -23,8 +23,12 @@
   ;(zk/start)
   (Thread/sleep (* 3 id))
   (c/su
-     (c/cd "/opt/kafka"
-     (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh config/server.properties")))))
+    (info "start!  begins" id)
+    (c/cd "/opt/kafka"
+       (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh config/server.properties")))
+    (info "start!  ends" id)
+  )
+)
 
 (defn stop!
   []
@@ -47,7 +51,7 @@
   (stop! )
   (c/su
     (stop!)
-    ;(c/exec :rm :-rf "/opt/kafka")
+    (c/exec :rm :-rf "/opt/kafka")
     (c/exec :rm :-rf "/tmp/kafka-logs")))
 
 (comment
@@ -72,10 +76,12 @@
 
 (defn deploy [id node version]
   (let [filename "/opt/kafka/config/server.properties"]
-    ;(info "set-broker-id!" filename node id )
+    ; (info "deploy calls set-broker-id!" filename node id )
     (set-broker-id! filename id))
-    ;(info "set-broker-id done!" id )
+    ; (info "deplpoy set-broker-id done calls start!!" id )
+    (info "deplpoy start! begins" id )
     (start! id)
+    (info "deplpoy start! ends!" id )
     ; Create topic asynchronously
     (when (= id 1)
        (future  (create-topic)))
@@ -83,10 +89,9 @@
 
 (defn install! [node version]
    ; Install specific versions
-  (info "install! Kafka" node )
+  (info "install! Kafka begins" node )
   (let [id  (Integer.  (re-find #"\d+", (name node)))
         kafka "kafka_2.10-0.10.0.1"]
-    (info node id)
     (c/exec :apt-get :update)
     (c/exec :apt-get :install :-y :--force-yes "default-jre")
     (c/exec :apt-get :install :-y :--force-yes "wget")
@@ -98,7 +103,11 @@
           (c/exec :tar :xf (format "%s.tar" kafka))
           (c/exec :mv kafka "kafka")
           (c/exec :rm (format "%s.tar" kafka)))
-    (deploy id node version)))
+    (info "install! Kafka before call deploy" node )
+    (deploy id node version))
+    (info "install! Kafka ends call deploy" node )
+  (info "install! Kafka ends" node )
+)
 
 (defn db
     "Kafka DB for a particular version."
@@ -106,13 +115,17 @@
     (let [zk (zk/db "3.4.5+dfsg-2")]
       (reify db/DB
         (setup!  [_ test node]
-          (info node "installing zk Node 1 only" version)
+          (info "setup! zk " node)
           (db/setup! zk test node)
-          (info node "installing kafka" version)
-          (install!  node version))
+          (info "setup! kafka" node)
+          (install! node version)
+          (info "setup! kafka done"  node)
+        )
         (teardown!  [_ test node]
-          (info node "tearing down Kafka NUKE!!!")
-          (nuke!)))))
+          (info "tearing down Kafka NUKE!!!" node)
+          (nuke!)
+          (info "Kafka NUKED!!!" node)
+          ))))
 
 (defn kafka-test
     [version]
