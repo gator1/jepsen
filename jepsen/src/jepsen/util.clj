@@ -99,7 +99,8 @@
   (pr (:f op))       (print \tab)
   (pr (:value op))
   (when-let [err (:error op)]
-    (print \tab) (print err))
+    (assert (contains? op :value)) ; if there is no value, error would be in wrong column
+    (print \tab) (pr err))
   (print \newline))
 
 (defn print-history
@@ -114,6 +115,20 @@
   (with-open [w (io/writer f)]
     (binding [*out* w]
       (print-history history))))
+
+(defn extract-op [line]
+  (let [splitted (clojure.string/split line #"\t")]
+    (merge {:process (read-string (splitted 0))
+            :type (read-string (splitted 1))
+            :f (read-string (splitted 2))
+            :value (read-string (splitted 3))} (if (> (count splitted) 4) {:error (read-string (splitted 4))}))))
+
+(defn read-history
+  "Reads a history from a file."
+  [f]
+  (let [raw (slurp f)
+        lines (clojure.string/split raw #"\n")]
+    (map extract-op lines)))
 
 (defn pwrite-history!
   "Writes history, taking advantage of more cores."
