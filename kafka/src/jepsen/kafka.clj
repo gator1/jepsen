@@ -1,10 +1,23 @@
 (ns jepsen.kafka
+  (use kafka-clj.client :reload)
   (:require  [clojure.tools.logging :refer :all]
              [clojure.java.io :as io]
              [clojure.string     :as str]
              [jepsen  [db    :as db]
+                      [core  :as jepsen]
+                      [client  :as client]
                       [control :as c]
-                      [tests :as tests] ]
+                      [tests :as tests]
+                      [checker   :as checker]
+                      [model     :as model]
+                      [generator :as gen]
+                      [store     :as store]
+                      [nemesis   :as nemesis]
+                      [report    :as report]
+                      [util      :as util :refer  [meh
+                                                   timeout
+                                                   relative-time-nanos]]
+                      ]
              [jepsen.control :as c :refer  [|]]
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
@@ -127,8 +140,105 @@
           (info "Kafka NUKED!!!" node)
           ))))
 
+(comment  broker  (->>  (zk/brokers {"zookeeper.connect"  (str  (:host opts) ":2181")})
+                    (filter #(=  (:host %)  (:host node)))
+                    first))
+(comment
+                 producer  (producer/producer
+                                {"metadata.broker.list"  (str  (:host node) ":9092")
+                                 "request.required.acks" "-1" ; all in-sync brokers
+                                 "producer.type"         "sync"
+                                 "message.send.max_retries" "1"
+                                 "connect.timeout.ms"    "1000"
+                                 "retry.backoff.ms"       "1000"
+                                 "serializer.class"     "kafka.serializer.DefaultEncoder"
+                                 "partitioner.class"    "kafka.producer.DefaultPartitioner"}))
+
+(defn dequeue!
+    "Given a client and an :invoke :dequeue op, dequeues and acks a job."
+    [test op   ]
+    (info "dequeue! called" )
+  )
+
+(defn client
+    "A client for a single compare-and-set register"
+    []
+    (reify client/Client
+        (setup!  [_ test node]
+           (info "client called" node)
+           (comment work on this!!!
+           (let [container  (-> node
+                                 (str/split ":")
+                                 ( nth 1))]
+             (info "container" container)
+             ))
+           (def connector (create-connector  [{:host node :port 9092}]  {:flush-on-write true}))
+           (let [enqueued (atom 0)
+                 topic "jepsen"
+                 ]
+           (info "client producer broker topic does nothing" ))
+        )
+        (invoke!  [this test op]
+          (info "invoke! "  op)
+          (case  (:f op)
+             :enqueue  (do
+                      (assoc op :type :ok))
+             :dequeue  (dequeue! test op)
+             :drain   (timeout 10000  (assoc op :type :info :value :timeout)
+                            (loop  []
+                              (let  [op' (->>  (assoc op
+                                                      :f    :dequeue
+                                                      :time  (relative-time-nanos))
+                                              util/log-op
+                                              (jepsen/conj-op! test)
+                                              (dequeue!
+                                                test op ))]
+                                ; Log completion
+                                (->>  (assoc op' :time  (relative-time-nanos))
+                                     util/log-op
+                                     (jepsen/conj-op! test))
+
+                                (if  (= :fail  (:type op'))
+                                  ; Done
+                                  (assoc op :type :ok, :value :exhausted)
+
+                                  ; Keep going.
+                                  (recur)))))))
+        (teardown!  [_ test])))
+
+; Generators
+
+(defn std-gen
+    "Takes a client generator and wraps it in a typical schedule and nemesis
+      causing failover."
+    [gen]
+    (gen/phases
+       (->> gen
+            (gen/nemesis
+               (gen/seq  (cycle  [(gen/sleep 10)
+                                   {:type :info :f :start}
+                                   (gen/sleep 10)
+                                   {:type :info :f :stop}])))
+            (gen/time-limit 100))
+       ; Recover
+       (gen/nemesis  (gen/once  {:type :info :f :stop}))
+       ; Wait for resumption of normal ops
+       (gen/clients  (gen/time-limit 10 gen))
+       ; Drain
+       (info "draining " )
+       (gen/log "Draining")
+       (gen/clients  (gen/each  (gen/once  {:type :invoke
+                                            :f    :drain})))))
+
+
 (defn kafka-test
     [version]
       (assoc  tests/noop-test
              :os debian/os
-             :db  (db version)))
+             :db  (db version)
+             :client  (client)
+             :model   (model/unordered-queue)
+             :generator  (->>  (gen/queue)
+                               (gen/delay 1)
+                               std-gen)
+      ))
