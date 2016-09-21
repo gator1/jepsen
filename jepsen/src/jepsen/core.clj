@@ -339,6 +339,11 @@
     (info (format "Analysis complete. %s" runtime))
     @res))
 
+(defn analyze! [test test-dir]
+  (let [history (util/read-history (format "%s/history.txt" test-dir))]
+    (log-results (with-thread-name "jepsen analysis runner"
+                   (analyze (assoc test :history history))))))
+
 (defn run!
   "Runs a test. Tests are maps containing
 
