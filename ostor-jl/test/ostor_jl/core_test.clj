@@ -23,7 +23,7 @@
                                                   {:type :info, :f :start}
                                                   (gen/sleep 5)
                                                   {:type :info, :f :stop}])))
-                               (gen/time-limit 30))
+                               (gen/time-limit 6))
                :model (multi-register {})
                :checker (checker/compose
                           {:perf   (checker/perf)
