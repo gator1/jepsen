@@ -3,6 +3,11 @@
   (:require  [clojure.tools.logging :refer :all]
              [clojure.java.io :as io]
              [clojure.string     :as str]
+             [clj-kafka.consumer.zk  :as consumer]
+             [clj-kafka.producer     :as producer]
+             [clj-kafka.new.producer :as nproducer]
+             [clj-kafka.zk           :as czk]
+             [clj-kafka.core         :as ckafka]
              [jepsen  [db    :as db]
                       [core  :as jepsen]
                       [client  :as client]
@@ -22,6 +27,9 @@
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
              [jepsen.os.debian :as debian]))
+
+(use 'kafka-clj.client :reload)
+(use 'kafka-clj.consumer.node :reload)
 
 (defn create-topic
   []
@@ -154,57 +162,76 @@
                                  "serializer.class"     "kafka.serializer.DefaultEncoder"
                                  "partitioner.class"    "kafka.producer.DefaultPartitioner"}))
 
+
+(defn drain!
+    "Returns a sequence of all elements available within dt millis."
+    [ho topic dt op]
+    (timeout 10000  (assoc op :type :info, :error :timeout)
+       (ckafka/with-resource
+           [consumer (consumer/consumer
+               {"zookeeper.connect"   (str (:host (name ho)) ":2181")
+                                       "group.id"            "jepsen.consumer"
+                                       "auto.offset.reset"   "smallest"
+                                       "auto.commit.enable"  "true"})]
+                  consumer/shutdown
+                      (let  [done  (atom  [])]
+                              (loop  [coll  (consumer/messages consumer  [topic])]
+                                 (if  (-> done
+                                    (swap! conj  (first coll))
+                                           future
+                                           (deref dt ::timeout)
+                                           (= ::timeout))
+                                          @done
+                               (recur  (rest coll))))))))
+
 (defn dequeue!
     "Given a client and an :invoke :dequeue op, dequeues and acks a job."
-    [test op   ]
+    [test node op]
     (info "dequeue! called" )
+    (timeout 10000  (assoc op :type :info, :error :timeout)
+        (def config  {"zookeeper.connect" (str (name node) ":2182")
+                  "group.id" "clj-kafka.consumer"
+                  "auto.offset.reset" "smallest"
+                  "auto.commit.enable" "false"})
+        (ckafka/with-resource  [c  (consumer/consumer config)]
+              consumer/shutdown
+              (doall (take 2  (consumer/messages c "jepsen"))))
+  ))
+
+
+(defrecord Client [nd conn]
+  client/Client
+  (setup!  [_ test node]
+           (let [
+                 ; c  (create-connector  [{:host (name node ) :port 9092}]  {:flush-on-write true})
+                 ]
+             ; Return Client
+             (Client. node nil)))
+
+  (teardown!  [_ test])
+
+  (invoke!  [this test op]
+     (case  (:f op)
+         :enqueue  (
+              (if (= nil  conn)
+                 (def c  (create-connector  [{:host (name nd ) :port 9092}]  {:flush-on-write true}))
+                 (def c conn))
+             ;(def msg1kb  (.getBytes  (clojure.string/join ","  (range 278))))
+             (timeout 10000  (assoc op :type :info, :error :timeout)
+
+                 (time  (doseq  [i  (range 100000)]  (send-msg c "jepsen" (.getBytes (str (:value op))))))
+                    )
+              (assoc op :type :ok)
+              (Client. nd c)
+
+                      )
+         :dequeue  (dequeue! test nd op)
+         :drain  (drain! nd "jepsen" 1000 op)
+         ))
   )
 
-(defn client
-    "A client for a single compare-and-set register"
-    []
-    (reify client/Client
-        (setup!  [_ test node]
-           (info "client called" node)
-           (comment work on this!!!
-           (let [container  (-> node
-                                 (str/split ":")
-                                 ( nth 1))]
-             (info "container" container)
-             ))
-           (def connector (create-connector  [{:host node :port 9092}]  {:flush-on-write true}))
-           (let [enqueued (atom 0)
-                 topic "jepsen"
-                 ]
-           (info "client producer broker topic does nothing" ))
-        )
-        (invoke!  [this test op]
-          (info "invoke! "  op)
-          (case  (:f op)
-             :enqueue  (do
-                      (assoc op :type :ok))
-             :dequeue  (dequeue! test op)
-             :drain   (timeout 10000  (assoc op :type :info :value :timeout)
-                            (loop  []
-                              (let  [op' (->>  (assoc op
-                                                      :f    :dequeue
-                                                      :time  (relative-time-nanos))
-                                              util/log-op
-                                              (jepsen/conj-op! test)
-                                              (dequeue!
-                                                test op ))]
-                                ; Log completion
-                                (->>  (assoc op' :time  (relative-time-nanos))
-                                     util/log-op
-                                     (jepsen/conj-op! test))
+(defn client [] (Client. nil nil))
 
-                                (if  (= :fail  (:type op'))
-                                  ; Done
-                                  (assoc op :type :ok, :value :exhausted)
-
-                                  ; Keep going.
-                                  (recur)))))))
-        (teardown!  [_ test])))
 
 ; Generators
 

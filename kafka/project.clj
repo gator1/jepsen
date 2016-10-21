@@ -7,4 +7,6 @@
                  [jepsen "0.1.2"]
                  [knossos "0.2.8"]
                  [jepsen.zookeeper "0.1.0-SNAPSHOT"]
+                 [clj-kafka "0.3.4"]
+                 [kafka-clj "3.6.8"]
                  ])
