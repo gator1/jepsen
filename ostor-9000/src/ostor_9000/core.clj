@@ -9,6 +9,7 @@
              [tests :as tests]
              [util :refer [timeout]]]
             [knossos.model :refer [cas-register]]
+            [knossos.history :as history]
             [clojure.edn :as edn])
   (:use     [clojure.java.shell :only [sh]]) )
 
@@ -45,7 +46,7 @@
     (setup! [_ test node]
       (let [loc (location node)]
         (set-reg loc 0)
-        (client loc)))
+        (client-nfs loc)))
 
     (invoke! [this test op]
       (timeout 5000 (assoc op :type :info, :error :timeout)
@@ -72,6 +73,49 @@
     (invoke! [_ test op])
     (teardown! [_ test]))
   )
+
+; partition node for perf test
+(defn split-node
+  [n nodes]
+  (let [coll (remove (fn [x] (= x n)) nodes)]
+    [[n], coll]))
+
+; partition specific node
+(defn partition-node
+  [n]
+  (nemesis/partitioner (comp nemesis/complete-grudge (partial split-node n))))
+
+; generate n normal operations
+(defn op-limit
+  [n gen]
+  (let [life (atom (inc n))]
+    (reify gen/Generator
+      (op [_ test process]
+        (if (= process :nemesis)
+          (when (pos? @life)
+            (gen/op gen test process))
+          (when (pos? (swap! life dec))
+            (gen/op gen test process)))))))
+
+; checker for perf test
+(defn total-time
+  [history]
+  (loop [pairs (history/pairs history)
+         cnt   0
+         total 0]
+    (if (nil? pairs)
+      {:writes cnt :total-time total}
+      (let [[invoke complete] (first pairs)
+            pairs (next pairs)]
+        (if (= :invoke (:type invoke))
+          (recur pairs (inc cnt) (+ total (- (:time complete) (:time invoke))))
+          (recur pairs cnt total))))))
+
+(def perf-checker
+  (reify checker/Checker
+    (check [_ test model history opts]
+      (merge {:valid? true} (total-time history)))))
+
 
 ; test cap
 (defn cap-test

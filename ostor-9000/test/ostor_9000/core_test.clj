@@ -14,7 +14,7 @@
   (let [test (assoc tests/noop-test
                :nodes [:n1 :n2 :n3]
                :name "os9000-cap-test"
-               :client (client nil)
+               :client (client-nfs nil)
                :nemesis (nemesis/partition-random-halves)
                :generator (->> (gen/mix [r w cas])
                                (gen/stagger 1)
