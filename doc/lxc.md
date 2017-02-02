@@ -140,6 +140,11 @@ Log into the containers, (may have to specify tty 0 to use console correctly) e.
 ```sh
 lxc-console --name n1 -t 0
 ```
+Gators: to get out this 'ctl-a' q, make sure q has no ctl. 
+
+easier (on ubuntu) is lxc-attach -n n1
+adduser to add   a user
+default container ubuntu/ubuntu or root/ubuntu or root/None
 
 (Optional?) In the containers, update keys used by apt to verify packages:
 
