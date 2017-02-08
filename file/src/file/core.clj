@@ -6,8 +6,8 @@
              [generator :as gen]
              [checker :as checker]
              [control :as c]
-             [tests :as tests]
              [independent :as independent]
+             [tests :as tests]
              [util :refer [timeout]]]
             [knossos.model :refer [cas-register]]
             [knossos.history :as history]
@@ -15,8 +15,9 @@
   (:use     [clojure.java.shell :only [sh]]) )
 
 ; define path
-(def ^:private file-path "/home/gary/jepsen/file/mount/n")
-(def ^:private temp-path "/home/gary/jepsen/file/data/")
+(def op-cmd "python /home/jepsen/bin/cas2.0.py -p ")
+(def data-path "/home/jepsen/ostor/")
+(def temp-path "/home/jepsen/jepsen/file/temp/")
 
 ; define operations
 (defn r   [_ _] {:type :invoke, :f :read, :value nil})
@@ -29,19 +30,30 @@
        (re-find #"\d+")
        (Integer. )))
 
-(defn get-reg
-  [loc]
-  (->> (sh "cat" loc)
-       :out
-       edn/read-string))
-
-(defn set-reg
-  [loc val]
-  (sh "sh" "-c" (str "echo " val " > " loc)))
-
 (defn location
   [n]
-  (str file-path (nid n) "/data"))
+  (str data-path "n" (nid n) "/data"))
+
+(defn read-data
+  [loc]
+  (let [ret (sh "sh" "-c" (str op-cmd loc " -t r"))]
+(println "exit=" (:exit ret) "out=" (:out ret))
+    (if (= (:exit ret) 0) (edn/read-string (:out ret)) -1)))
+
+(defn write-data
+  [loc v]
+  (let [ret (sh "sh" "-c" (str op-cmd loc " -t w -w " v))]
+    (if (= (:exit ret) 0) 0 -1)))
+
+(defn cas-data
+  [loc v v']
+  (let [ret (sh "sh" "-c" (str op-cmd loc " -t c -r " v " -w " v'))]
+    (if (not= (:exit ret) 0) -1
+      (if (< (edn/read-string (:out ret)) 0) -1 0))))
+
+(defn init-data
+  []
+  (write-data (location :n1) 0))
 
 ; client for nfs based
 (defn client-nfs
@@ -49,92 +61,98 @@
   (reify client/Client
     (setup! [_ test node]
       (let [loc (location node)]
-        (set-reg loc 0)
+;        (set-reg loc 0)
         (client-nfs loc)))
 
     (invoke! [this test op]
-      (timeout 5000 (assoc op :type :info, :error :timeout)
+      (timeout 10000 (assoc op :type :info, :error :timeout)
                (case (:f op)
-                 :read  (assoc op :type :ok, :value (get-reg loc))
+                 :read  (let [ret (read-data loc)]
+                          (if (< ret 0) (assoc op :type :fail, :value (:value op))
+                                        (assoc op :type :ok, :value ret)))
 
-                 :write (do (set-reg loc (:value op))
-                            (assoc op :type :ok))
+                 :write (let [ret (write-data loc (:value op))]
+                          (if (< ret 0) (assoc op :type :fail)
+                                        (assoc op :type :ok)))
 
-                 :cas   (let [[value value'] (:value op)]
-                          (if (= (get-reg loc) value)
-                            (do (set-reg loc value')
-                                (assoc op :type :ok))
-                            (assoc op :type :fail))))))
+                 :cas   (let [[value value'] (:value op)
+                              ret (cas-data loc value value')]
+                          (if (< ret 0) (assoc op :type :fail)
+                                        (assoc op :type :ok))))))
 
-    (teardown! [_ test])))
+    (teardown! [_ test]))
+  )
 
-(def ^:private key-list [10 20 30 40 50])
-(def ^:private skip-size 512) ; 256k=512*512b
+; definitions for multi-register
+(def key-list [1 2 3 4 5 6 7 8])
+(def ^:private pos-list [0 255 256 257 1023 1024 1025 4095])
 
 ; operations for multi-register
-(defn rm
-  [_ _]
+(defn rm [_ _]
   (let [k (rand-nth key-list)]
     {:type :invoke :f :txn :value (independent/tuple k [[:read k nil]])}))
 
-(defn wm
-  [_ _]
+(defn wm [_ _]
   (let [k (rand-nth key-list)
-        v (+ 1 (rand-int 255))]
+        v (+ 1 (rand-int 9))]
     {:type :invoke :f :txn :value (independent/tuple k [[:write k v]])}))
 
+; get data on specific position from disk
 (defn get-multi-data
-  [n key]
-  (let [temp (str temp-path "temp" n)
-        data (str file-path n "/data")
-        pos (* skip-size (- (/ key 10) 1))]
-
-    (let [ret (->> (str "cat " temp)
-                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
-                   (sh "sh" "-c"))]
-      (if (= 0 (:exit ret)) (edn/read-string (:out ret)) -1))))
+  [n key proc]
+  (let [temp (str temp-path "temp" key "-" proc)
+        data (str data-path "n" n "/data")
+        pos (nth pos-list (dec key))
+        ret (sh "sh" "-c" (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct"))]
+    (if (= 0 (:exit ret)) (edn/read-string (:out (sh "sh" "-c" (str "cat " temp)))) -1)))
 
 (defn set-multi-data
-  [n key val]
-  (let [temp (str temp-path "temp" n)
-        data (str file-path n "/data")
-        pos (* skip-size (- (/ key 10) 1))]
-    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
-                   (str "echo " val " > " temp ";")
-                   (sh "sh" "-c"))]
-      (if (= 0 (:exit ret)) 0 -1))))
+  [n key proc val]
+  (let [temp (str temp-path "temp" key "-" proc)
+        data (str data-path "n" n "/data")
+        pos (nth pos-list (dec key))
+        ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
+                 (str "cat <(echo " val ") <(dd if=/dev/zero bs=1 count=510) > " temp " ;")
+                 (sh "bash" "-c"))]
+    (if (= 0 (:exit ret)) 0 -1)))
 
 (defn init-multi-data
   [n count]
-  (let [data (str file-path n "/data")]
+  (let [data (str data-path "n" n "/data")]
     (sh "sh" "-c" (str "dd if=/dev/zero of=" data " count=" count))
-    (doseq [k key-list] (set-multi-data n k 0))))
+    (doseq [k key-list] (set-multi-data n k 0 0))))
+
+(defn get-multi-all
+  [n]
+  (doseq [k key-list]
+    (let [v (get-multi-data n k 0)]
+      (println "key: " k, "value: " v))))
 
 ; client for nfs multi-register
 (defn client-multi
   [n]
   (reify client/Client
     (setup! [this test node]
-      (init-multi-data (nid node) 4096) ;move to core_test in real
       (client-multi (nid node)))
 
     (invoke! [this test op]
       (timeout 5000 (assoc op :type :info :error :timeout)
                (case (:f op)
-                 :txn (let [[key [[f k v]]] (:value op)]
+                 :txn (let [[key [[f k v]]] (:value op)
+                            proc (:process op)]
                         (case f
-                          :read (let [v (get-multi-data n key)
-                                      t (independent/tuple key [[:read k v]])]
-                                  (if (> 0 v) (assoc op :type :fail, :value t)
-                                              (assoc op :type :ok,   :value t)))
+                          :read (let [r (get-multi-data n key proc)]
+                                  (if (> 0 r) (assoc op :type :fail, :value (independent/tuple key [[:read k v]]))
+                                              (assoc op :type :ok,   :value (independent/tuple key [[:read k r]]))))
 
-                          :write (let [r (set-multi-data n key v)
+                          :write (let [r (set-multi-data n key proc v)
                                        t (independent/tuple key [[:write k v]])]
                                    (if (> 0 r) (assoc op :type :fail :value t)
                                                (assoc op :type :ok   :value t)))
                           )))))
 
-    (teardown! [_ test])))
+    (teardown! [_ test])
+  ))
 
 ; partition node for perf test
 (defn split-node

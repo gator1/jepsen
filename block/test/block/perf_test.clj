@@ -22,7 +22,7 @@
                                        {:type :info, :f :start}
                                        (gen/sleep t2)
                                        {:type :info, :f :stop}])))
-                    (op-limit 20))
+                    (op-limit 200))
     :checker perf-checker)
   )
 
@@ -34,7 +34,7 @@
                :generator (->> w
                                (gen/stagger 1)
                                (gen/clients)
-                               (op-limit 20)))]
+                               (op-limit 200)))]
     (is (:valid? (:results (jepsen/run! test))))))
 
 ; testcase 1: n2 out for 2s
@@ -42,49 +42,7 @@
   (info "performance test #1\n")
   (is (:valid? (:results (jepsen/run! (fsperf-map 2 2))))))
 
-; testcase 2: n2 out for 6s, which causes downgrade
+; testcase 2: n2 out for 100s, which causes no response
 (deftest fsperf-test-2
   (info "performance test #2\n")
-  (is (:valid? (:results (jepsen/run! (fsperf-map 6 6))))))
-
-; testcase 3: n2, n3 out for 5s in turn
-(deftest fsperf-test-3
-  (info "performance test #3\n")
-  (let [test (assoc (fsperf-map 1 5)
-               :nemesis (partition-node-seq))]
-    (is (:valid? (:results (jepsen/run! test))))))
-
-; testcase 4: n2 out for 5s and then n3 out
-(deftest fsperf-test-4
-  (info "performance test #4\n")
-  (let [test (assoc (fsperf-map 5 5)
-               :nemesis (partition-node-seq)
-               :generator (->> w
-                               (gen/stagger 1)
-                               (gen/nemesis
-                                 (gen/seq (cycle [(gen/sleep 5)
-                                                  {:type :info, :f :start}
-                                                  (gen/sleep 5)
-                                                  {:type :info, :f :start}
-                                                  (gen/sleep 5)
-                                                  {:type :info, :f :stop}])))
-                               (op-limit 20)))]
-    (is (:valid? (:results (jepsen/run! test))))))
-
-; testcase 5: n2 out for 5s and then control out
-(deftest fsperf-test-5
-  (info "performance test #5\n")
-  (let [test (assoc (fsperf-map 5 5)
-               :nodes [:n1 :n2 :n3 :n4]
-               :nemesis (partition-node-ctrl)
-               :generator (->> w
-                               (gen/stagger 1)
-                               (gen/nemesis
-                                 (gen/seq (cycle [(gen/sleep 5)
-                                                  {:type :info, :f :start}
-                                                  (gen/sleep 5)
-                                                  {:type :info, :f :start}
-                                                  (gen/sleep 5)
-                                                  {:type :info, :f :stop}])))
-                               (op-limit 20)))]
-    (is (:valid? (:results (jepsen/run! test))))))
+  (is (:valid? (:results (jepsen/run! (fsperf-map 0 100))))))

@@ -28,7 +28,7 @@
                                                   {:type :info, :f :start}
                                                   (gen/sleep 5)
                                                   {:type :info, :f :stop}])))
-                               (gen/time-limit 60))
+                               (gen/time-limit 100))
                :model (multi-register (zipmap key-list (repeat 0)))
                :checker (independent/checker checker/linearizable))]
     (is (:valid? (:results (jepsen/run! test))))))
