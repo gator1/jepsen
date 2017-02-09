@@ -40,13 +40,15 @@
 (defn get-data
   [process dev pos]
   (let [ret (->> (str "cat " data process)
-                (str "dd if=" dev " skip=" (+ offset pos) " of=" data process " count=1 iflag=direct;")
+;                (str "dd if=" dev " skip=" (+ offset pos) " of=" data process " count=1 iflag=direct;")
+                (str "dd if=" dev " skip=" (+ offset pos) " of=" data process " count=1;")
                 (sh "sh" "-c"))]
     (if (= 0 (:exit ret)) (edn/read-string (:out ret)) -1)))
 
 (defn set-data
   [process dev pos val]
-  (let [ret (->> (str "dd if=" data process " of=" dev " seek=" (+ offset pos) " count=1 oflag=direct")
+;  (let [ret (->> (str "dd if=" data process " of=" dev " seek=" (+ offset pos) " count=1 oflag=direct")
+  (let [ret (->> (str "dd if=" data process " of=" dev " seek=" (+ offset pos) " count=1")
                  (str "cat <(echo " val ") <(dd if=/dev/zero bs=1 count=510) > " data process " ;")
        (sh "bash" "-c"))]
     (if (= 0 (:exit ret)) 0 -1)))

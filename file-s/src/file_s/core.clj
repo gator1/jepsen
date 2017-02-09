@@ -90,7 +90,8 @@
         pos (* skip-size (- (/ key 10) 1))]
 
     (let [ret (->> (str "cat " temp)
-                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
+;                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
+                   (str "dd if=" data " skip=" pos " of=" temp " count=1;")
                    (sh "sh" "-c"))]
       (if (= 0 (:exit ret)) (edn/read-string (:out ret)) -1))))
 
@@ -99,7 +100,8 @@
   (let [temp (str temp-path "temp" n)
         data (str file-path n "/data")
         pos (* skip-size (- (/ key 10) 1))]
-    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
+;    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
+    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 conv=notrunc")
                    (str "echo " val " > " temp ";")
                    (sh "sh" "-c"))]
       (if (= 0 (:exit ret)) 0 -1))))
