@@ -1,5 +1,5 @@
 FROM kojiromike/dind
-MAINTAINER jake@apache.org
+MAINTAINER gator1@github.com
 
 ENV JEPSEN_GIT_URL https://github.com/gator1/jepsen
 ENV LEIN_ROOT true
@@ -16,6 +16,8 @@ RUN apt-get -y -q update && \
         libjna-java \
         git \
         gnuplot \
+        ack-grep \
+        vim \
         wget
 
 
