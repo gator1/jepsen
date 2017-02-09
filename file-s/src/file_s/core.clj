@@ -125,13 +125,12 @@
                         (case f
                           :read (let [v (get-multi-data n key)
                                       t (independent/tuple key [[:read k v]])]
-                                  (if (> 0 v) (assoc op :type :fail, :value t)
-                                              (assoc op :type :ok,   :value t)))
+                                  (if (> 0 v) (assoc op :type :fail)
+                                              (assoc op :type :ok, :value t)))
 
-                          :write (let [r (set-multi-data n key v)
-                                       t (independent/tuple key [[:write k v]])]
-                                   (if (> 0 r) (assoc op :type :fail :value t)
-                                               (assoc op :type :ok   :value t)))
+                          :write (let [r (set-multi-data n key v)]
+                                   (if (> 0 r) (assoc op :type :fail)
+                                               (assoc op :type :ok)))
                           )))))
 
     (teardown! [_ test])))

@@ -96,7 +96,7 @@
       (timeout 10000 (assoc op :type :info, :error :timeout)
                (case (:f op)
                  :read (let [ret (get-reg (:process op))]
-                         (if (> 0 ret) (assoc op :type :fail, :value ret)
+                         (if (> 0 ret) (assoc op :type :fail)
                                        (assoc op :type :ok, :value ret)))
 
                  :write (let [ret (set-reg (:process op) (:value op))]
@@ -126,7 +126,7 @@
       (timeout 5000 (assoc op :type :info, :error :timeout)
                (case (:f op)
                  :read (let [ret (get-blk (:process op))]
-                         (if (> 0 ret) (assoc op :type :fail, :value ret)
+                         (if (> 0 ret) (assoc op :type :fail)
                                        (assoc op :type :ok, :value ret)))
 
                  :write (let [ret (set-blk (:process op) (:value op))]

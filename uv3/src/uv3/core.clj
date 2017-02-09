@@ -81,13 +81,13 @@
                             proc (:process op)]
                         (case f
                           :read (let [r (get-multi-data n key proc)]
-                                  (if (> 0 r) (assoc op :type :fail, :value (independent/tuple key [[:read k v]]))
-                                              (assoc op :type :ok,   :value (independent/tuple key [[:read k r]]))))
+                                  (if (> 0 r) (assoc op :type :fail)
+                                              (assoc op :type :ok
+                                                        :value (independent/tuple key [[:read k r]]))))
 
-                          :write (let [r (set-multi-data n key proc v)
-                                       t (independent/tuple key [[:write k v]])]
-                                   (if (> 0 r) (assoc op :type :fail :value t)
-                                               (assoc op :type :ok   :value t)))
+                          :write (let [r (set-multi-data n key proc v)]
+                                   (if (> 0 r) (assoc op :type :fail)
+                                               (assoc op :type :ok)))
                           )))))
 
     (teardown! [_ test])

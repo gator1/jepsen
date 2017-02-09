@@ -82,13 +82,13 @@
                  :txn (let [[key [[f k v]]] (:value op)]
                         (case f
                           :read (let [r (get-obj n key)]
-                                  (if (> 0 r) (assoc op :type :fail, :value (independent/tuple key [[:read k v]]))
-                                              (assoc op :type :ok,   :value (independent/tuple key [[:read k r]]))))
+                                  (if (> 0 r) (assoc op :type :fail)
+                                              (assoc op :type :ok
+                                                        :value (independent/tuple key [[:read k r]]))))
 
-                          :write (let [r (set-obj n key v)
-                                       t (independent/tuple key [[:write k v]])]
-                                   (if (> 0 r) (assoc op :type :fail :value t)
-                                               (assoc op :type :ok   :value t)))
+                          :write (let [r (set-obj n key v)]
+                                   (if (> 0 r) (assoc op :type :fail)
+                                               (assoc op :type :ok)))
                           )))))
 
     (teardown! [_ test])
