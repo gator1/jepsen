@@ -1,10 +1,10 @@
-# block
+# block-s
 
 A Clojure library designed to ... well, that part is up to you.
 
 ## Usage
 
-FIXME
+Create directory "/home/gary/jepsen/block-s/data" before running test
 
 ## License
 

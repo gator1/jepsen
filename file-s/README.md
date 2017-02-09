@@ -1,10 +1,14 @@
-# file
+# file-s
 
 A Clojure library designed to ... well, that part is up to you.
 
 ## Usage
 
-FIXME
+Create following directories before running lein test
+/home/gary/jepsen/file-s/mount/n1
+/home/gary/jepsen/file-s/mount/n2
+/home/gary/jepsen/file-s/mount/n3
+/home/gary/jepsen/file-s/data
 
 ## License
 
