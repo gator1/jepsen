@@ -90,7 +90,8 @@
         pos (* skip-size (- (/ key 10) 1))]
 
     (let [ret (->> (str "cat " temp)
-                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
+;                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
+                   (str "dd if=" data " skip=" pos " of=" temp " count=1;")
                    (sh "sh" "-c"))]
       (if (= 0 (:exit ret)) (edn/read-string (:out ret)) -1))))
 
@@ -99,7 +100,8 @@
   (let [temp (str temp-path "temp" n)
         data (str file-path n "/data")
         pos (* skip-size (- (/ key 10) 1))]
-    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
+;    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
+    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 conv=notrunc")
                    (str "echo " val " > " temp ";")
                    (sh "sh" "-c"))]
       (if (= 0 (:exit ret)) 0 -1))))
@@ -125,13 +127,12 @@
                         (case f
                           :read (let [v (get-multi-data n key)
                                       t (independent/tuple key [[:read k v]])]
-                                  (if (> 0 v) (assoc op :type :fail, :value t)
-                                              (assoc op :type :ok,   :value t)))
+                                  (if (> 0 v) (assoc op :type :fail)
+                                              (assoc op :type :ok, :value t)))
 
-                          :write (let [r (set-multi-data n key v)
-                                       t (independent/tuple key [[:write k v]])]
-                                   (if (> 0 r) (assoc op :type :fail :value t)
-                                               (assoc op :type :ok   :value t)))
+                          :write (let [r (set-multi-data n key v)]
+                                   (if (> 0 r) (assoc op :type :fail)
+                                               (assoc op :type :ok)))
                           )))))
 
     (teardown! [_ test])))

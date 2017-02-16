@@ -18,13 +18,13 @@
 
 
 ; define disk device, sector
-(def fsdev "/home/gary/jepsen/block/data/testdev")
+(def fsdev "/dev/sdb")
 (def data "/home/gary/jepsen/block/data/temp")
-(def offset 0)
+(def offset 12288)
 
 ; define host sudo password and primary node ip
 (def pwd-sudo "ubuntu")
-(def node-ip  "1.1.1.1")
+(def node-ip  "182.81.129.5")
 
 (def iter (atom 0))
 
@@ -35,26 +35,29 @@
 (defn add [_ _] {:type :invoke, :f :add, :value 1})
 (defn bw  [_ _] {:type :invoke, :f :write, :value (swap! iter inc)})
 
+(defn sudo-cmd
+  [cmd]
+  (sh "sh" "-c" (str "echo " pwd-sudo  " | sudo -S " cmd)))
 
 ; get data on specific position from disk
 (defn get-data
   [process dev pos]
+  (sh "sh" "-c" (str "dd if=/dev/zero count=1 > " data process))
   (let [ret (->> (str "cat " data process)
-                (str "dd if=" dev " skip=" (+ offset pos) " of=" data process " count=1 iflag=direct;")
-                (sh "sh" "-c"))]
+                 (str "dd if=" dev " skip=" (+ offset pos) " of=" data process " count=1 iflag=direct;")
+                 sudo-cmd)]
     (if (= 0 (:exit ret)) (edn/read-string (:out ret)) -1)))
 
 (defn set-data
   [process dev pos val]
-  (let [ret (->> (str "dd if=" data process " of=" dev " seek=" (+ offset pos) " count=1 oflag=direct")
-                 (str "cat <(echo " val ") <(dd if=/dev/zero bs=1 count=510) > " data process " ;")
-       (sh "bash" "-c"))]
+  (sh "bash" "-c" (str "cat <(echo " val ") <(dd if=/dev/zero bs=1 count=510) > " data process))
+  (let [ret (sudo-cmd (str "dd if=" data process " of=" dev " seek=" (+ offset pos) " count=1 oflag=direct"))]
     (if (= 0 (:exit ret)) 0 -1)))
 
 (defn init-blk
   [count]
   (->> (str "dd if=/dev/zero of=" fsdev " count=" count)
-       (sh "sh" "-c")))
+       sudo-cmd))
 
 ; read one of block data from disk
 (defn get-blk
@@ -90,10 +93,10 @@
       (client))
 
     (invoke! [this test op]
-      (timeout 5000 (assoc op :type :info, :error :timeout)
+      (timeout 10000 (assoc op :type :info, :error :timeout)
                (case (:f op)
                  :read (let [ret (get-reg (:process op))]
-                         (if (> 0 ret) (assoc op :type :fail, :value ret)
+                         (if (> 0 ret) (assoc op :type :fail)
                                        (assoc op :type :ok, :value ret)))
 
                  :write (let [ret (set-reg (:process op) (:value op))]
@@ -123,7 +126,7 @@
       (timeout 5000 (assoc op :type :info, :error :timeout)
                (case (:f op)
                  :read (let [ret (get-blk (:process op))]
-                         (if (> 0 ret) (assoc op :type :fail, :value ret)
+                         (if (> 0 ret) (assoc op :type :fail)
                                        (assoc op :type :ok, :value ret)))
 
                  :write (let [ret (set-blk (:process op) (:value op))]
@@ -175,10 +178,6 @@
   (nemesis/partitioner (comp nemesis/complete-grudge split-node-ctrl)))
 
 ; partition clients host
-(defn sudo-cmd
-  [cmd]
-  (sh "sh" "-c" (str "echo " pwd-sudo  " | sudo -S " cmd)))
-
 (defn drop-net
   []
   (sudo-cmd (str "iptables -A INPUT -s " node-ip " -j DROP")))

@@ -11,7 +11,7 @@
 
 (def ^:private fscap-map
   (assoc tests/noop-test
-    :nodes [:n1 :n2 :n3 :n4]
+    :nodes [:n1 :n2 :n3]
     :name "fscp-test"
     :concurrency 3
     :client (client)
@@ -23,12 +23,12 @@
                                        {:type :info, :f :start}
                                        (gen/sleep 5)
                                        {:type :info, :f :stop}])))
-                    (gen/time-limit 15))
+                    (gen/time-limit 100))
     :model (cas-register 0)
-    :checker checker/linearizable)
-    ;:checker (checker/compose
-     ;          {:perf   (checker/perf)
-      ;          :linear checker/linearizable}))
+    ;:checker checker/linearizable)
+    :checker (checker/compose
+               {:perf   (checker/perf)
+                :linear checker/linearizable}))
   )
 
 ; block consistency testing
