@@ -8,9 +8,10 @@ It contains all the jepsen dependencies and code. It uses [docker-in-docker](htt
 containers used by Jepsen.  
 
 To start run (note the required --privileged flag)
+Got my own with the jepsen latest from gator1, me!
 
 ````
-    docker run --privileged -t -i tjake/jepsen
+    docker run --privileged -t -i gators/jepsen
 ````
 
 Building the docker image
