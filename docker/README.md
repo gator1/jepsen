@@ -44,3 +44,23 @@ Alternatively, you can build the image yourself. This is a multi-step process, m
     ```
     docker run --privileged -t -i jepsen
     ```
+
+    install tmux in the image for multiple terminals (kind of)
+    sudo apt-get install tmux
+
+    issue:
+    tmux
+
+    then resize your window to be double width.
+
+    Then:
+
+    CTRL+b, %
+
+    Then you can use:
+    CTRL+b, <- and -> 
+
+    (Left arrow and right arrow)
+
+    to switch windows. 
+

@@ -18,6 +18,7 @@ RUN apt-get -y -q update && \
         gnuplot \
         ack-grep \
         vim \
+        tmux \
         wget
 
 
