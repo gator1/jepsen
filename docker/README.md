@@ -45,6 +45,9 @@ Alternatively, you can build the image yourself. This is a multi-step process, m
     docker run --privileged -t -i jepsen
     ```
 
+Run tmux in the docker image to get multiple Windows
+=========================
+
     install tmux in the image for multiple terminals (kind of)
     sudo apt-get install tmux
 
@@ -63,4 +66,80 @@ Alternatively, you can build the image yourself. This is a multi-step process, m
     (Left arrow and right arrow)
 
     to switch windows. 
+
+Upload image to docker hub so that it can be used as gators/jepsen
+=========================
+
+https://docs.docker.com/engine/getstarted/step_six/
+
+Step 1: Tag and push the image
+If you don’t already have a terminal open, open one now:
+
+Go back to your command line terminal.
+At the prompt, type docker images to list the images you currently have:
+ $ docker images
+ REPOSITORY          TAG                 IMAGE ID            CREATED
+ SIZE
+ jepsen              latest              6dc563b59188        14 minutes ago
+ 1.14 GB
+ gators/jepsen       latest              10fc1c76450a        7 days ago
+ 1.14 GB
+ gators/jepsen       mingli              10fc1c76450a        7 days ago
+ 1.14 GB
+ gators/jepsen       simulation          10fc1c76450a        7 days ago
+ 1.14 GB
+ tutum/debian        jessie              7b5da25fa27e        11 months ago
+ 155 MB
+ kojiromike/dind     latest              227220c311f8        2 years ago
+ 350 MB
+
+ Find the IMAGE ID for your jepsen image.
+      In this example, the id is 6dc563b59188.
+      Notice that currently, the REPOSITORY shows the repo name jepsen but
+      not the namespace. You need to include the namespace for Docker Hub to
+      associate it with your account. The namespace is the same as your Docker
+      Hub account name. You need to rename the image to
+      gators/jepsen.
+
+Use IMAGE ID and the docker tag command to tag your jepsen image.
+      The command you type looks like this:
+      Docker tag command
+      Of course, your account name will be your own. So, you type the command
+      with your image’s ID and your account name and press RETURN.
+       $ docker tag 6dc563b59188 gators/jepsen:latest
+
+Type the docker images command again to see your newly tagged image.
+        $ docker images
+        REPOSITORY          TAG                 IMAGE ID            CREATED
+        SIZE
+        gators/jepsen       latest              6dc563b59188        29 minutes
+        ago      1.14 GB
+        jepsen              latest              6dc563b59188        29 minutes
+        ago      1.14 GB
+        gators/jepsen       mingli              10fc1c76450a        7 days ago
+        1.14 GB
+        gators/jepsen       simulation          10fc1c76450a        7 days ago
+        1.14 GB
+        tutum/debian        jessie              7b5da25fa27e        11 months
+        ago       155 MB
+        kojiromike/dind     latest              227220c311f8        2 years ago
+        350 MB
+
+Use the docker login command to log into the Docker Hub from the command line.
+        The format for the login command is:
+        docker login
+        When prompted, enter your password and press enter. So, for
+           example:
+              $ docker login
+                 Login with your Docker ID to push and pull images from Docker
+                 Hub. If you don't have a Docker ID, head over to
+                 https://hub.docker.com to create one.
+                  Username:
+                   Password:
+                    Login Succeeded
+
+Type the docker push command to push your image to your new repository.
+       $ docker push gators/jepsen:tagname (without :tagname default to latest)
+            The push refers to a repository
+               [gators/jepsen] (len: 1)
 
