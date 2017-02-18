@@ -12,6 +12,9 @@ Got my own with the jepsen latest from gator1, me!
 
 ````
     docker run --privileged -t -i gators/jepsen
+    or
+    docker run -v /home/gary/docker:/docker --privileged -t -i gators/jepsen
+    the above map local /home/gary/docker to container's /docker
 ````
 
 Building the docker image
@@ -44,6 +47,13 @@ Alternatively, you can build the image yourself. This is a multi-step process, m
     ```
     docker run --privileged -t -i jepsen
     ```
+
+U docker in docker (dind) has docker version 1.5 which can no longer pull images from docker hub 
+=========================
+    docker save tutum/debian:jessie > debian.tar to save the image into a file.
+    after the docker build and run, ssh or -v the debain.tar on the running
+    docker container and do docker load (less) debian.tar and  load the image.
+    retag if necessary
 
 Run tmux in the docker image to get multiple Windows
 =========================
