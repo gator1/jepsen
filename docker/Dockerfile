@@ -1,4 +1,4 @@
-FROM kojiromike/dind
+FROM gators/dind
 MAINTAINER gator1@github.com
 
 ENV JEPSEN_GIT_URL https://github.com/gator1/jepsen
