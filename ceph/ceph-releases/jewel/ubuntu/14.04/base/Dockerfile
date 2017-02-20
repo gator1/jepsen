@@ -3,7 +3,7 @@
 # CEPH VERSION DETAIL: 10.2.x
 
 FROM ubuntu:14.04
-MAINTAINER Gary Xia "garyxia@gmail.com"
+MAINTAINER Sébastien Han "seb@redhat.com"
 
 ENV ETCDCTL_VERSION v2.2.4
 ENV ETCDCTL_ARCH linux-amd64
@@ -22,18 +22,17 @@ ADD https://github.com/kelseyhightower/confd/releases/download/v${CONFD_VERSION}
 ADD https://bin.equinox.io/c/ekMN3bCZFUn/forego-stable-linux-amd64.tgz /forego.tgz
 
 # install prerequisites
-RUN DEBIAN_FRONTEND=noninteractive apt-get update &&  apt-get install -y wget
-unzip uuid-runtime python-setuptools udev sharutils yum git software-properties-common python-software-properties && \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update &&  apt-get install -y wget unzip uuid-runtime python-setuptools udev sharutils && \
 \
 # install ceph and ganesha
-#apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3FE869A9 && \
-#echo "deb http://ppa.launchpad.net/gluster/nfs-ganesha/ubuntu trusty main" | tee /etc/apt/sources.list.d/nfs-ganesha.list && \
-#echo "deb http://ppa.launchpad.net/gluster/libntirpc/ubuntu trusty main" | tee /etc/apt/sources.list.d/libntirpc.list && \
-#wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add - && \
-#echo "deb http://download.ceph.com/debian-$CEPH_VERSION/ trusty main" | tee /etc/apt/sources.list.d/ceph-$CEPH_VERSION.list && \
-#apt-get update && apt-get install -y --force-yes ceph radosgw rbd-mirror nfs-ganesha nfs-ganesha-fsal && \
-#apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-#\
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3FE869A9 && \
+    echo "deb http://ppa.launchpad.net/gluster/nfs-ganesha/ubuntu trusty main" | tee /etc/apt/sources.list.d/nfs-ganesha.list && \
+    echo "deb http://ppa.launchpad.net/gluster/libntirpc/ubuntu trusty main" | tee /etc/apt/sources.list.d/libntirpc.list && \
+    wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add - && \
+    echo "deb http://download.ceph.com/debian-$CEPH_VERSION/ trusty main" | tee /etc/apt/sources.list.d/ceph-$CEPH_VERSION.list && \
+    apt-get update && apt-get install -y --force-yes ceph radosgw rbd-mirror nfs-ganesha nfs-ganesha-fsal && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+\
 # Install etcdctl
     wget -q -O- "https://github.com/coreos/etcd/releases/download/${ETCDCTL_VERSION}/etcd-${ETCDCTL_VERSION}-${ETCDCTL_ARCH}.tar.gz" |tar xfz - -C/tmp/ etcd-${ETCDCTL_VERSION}-${ETCDCTL_ARCH}/etcdctl && \
     mv /tmp/etcd-${ETCDCTL_VERSION}-${ETCDCTL_ARCH}/etcdctl /usr/local/bin/etcdctl && \
