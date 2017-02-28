@@ -7,71 +7,85 @@ then
     touch ~/.started
 
     #import the image
-    cat /root/jepsennode.tar.gz | docker import - jepsennode
+    cat /root/cephnode.tar.gz | docker import - cephnode
 
     # start the 5 nodes
-    docker run --privileged -d --name n1 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" jepsennode /run.sh
-    docker run --privileged -d --name n2 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" jepsennode /run.sh
-    docker run --privileged -d --name n3 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" jepsennode /run.sh
-    docker run --privileged -d --name n4 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" jepsennode /run.sh
-    docker run --privileged -d --name n5 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" jepsennode /run.sh
+    docker run --privileged -d --name mgmt -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
+    docker run --privileged -d --name mon-node1 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
+    docker run --privileged -d --name mon-node2 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
+    docker run --privileged -d --name mon-node3 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
+    docker run --privileged -d --name osd-node1 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
+    docker run --privileged -d --name osd-node2 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
+    docker run --privileged -d --name osd-node3 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh
 
   else
 
-    docker ps | grep -qw n1 || docker start n1
-    docker ps | grep -qw n2 || docker start n2
-    docker ps | grep -qw n3 || docker start n3
-    docker ps | grep -qw n4 || docker start n4
-    docker ps | grep -qw n5 || docker start n5
+    docker ps | grep -qw mgmt || docker start mgmt
+    docker ps | grep -qw mon-node1 || docker start mon-node1
+    docker ps | grep -qw mon-node2 || docker start mon-node2
+    docker ps | grep -qw mon-node3 || docker start mon-node3
+    docker ps | grep -qw osd-node1 || docker start osd-node1
+    docker ps | grep -qw osd-node2 || docker start osd-node2
+    docker ps | grep -qw osd-node3 || docker start osd-node3
 
   fi
 
 # note the ip address and add to /etc/hosts
-N1_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' n1)
-N2_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' n2)
-N3_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' n3)
-N4_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' n4)
-N5_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' n5)
+MG_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' mgmt)
+M1_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' mon-node1)
+M2_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' mon-node2)
+M3_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' mon-node3)
+O1_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' osd-node1)
+O2_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' osd-node2)
+O3_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' osd-node3)
 
-N1_ID=$(docker inspect --format '{{ .Config.Hostname }}' n1)
-N2_ID=$(docker inspect --format '{{ .Config.Hostname }}' n2)
-N3_ID=$(docker inspect --format '{{ .Config.Hostname }}' n3)
-N4_ID=$(docker inspect --format '{{ .Config.Hostname }}' n4)
-N5_ID=$(docker inspect --format '{{ .Config.Hostname }}' n5)
+MG_ID=$(docker inspect --format '{{ .Config.Hostname }}' mgmt)
+M1_ID=$(docker inspect --format '{{ .Config.Hostname }}' mon-node1)
+M2_ID=$(docker inspect --format '{{ .Config.Hostname }}' mon-node2)
+M3_ID=$(docker inspect --format '{{ .Config.Hostname }}' mon-node3)
+O1_ID=$(docker inspect --format '{{ .Config.Hostname }}' osd-node1)
+O2_ID=$(docker inspect --format '{{ .Config.Hostname }}' osd-node2)
+O3_ID=$(docker inspect --format '{{ .Config.Hostname }}' osd-node3)
 
 cat <<EOF > /etc/hosts
 127.0.0.1   localhost
 ::1     localhost ip6-localhost ip6-loopback
-$N1_IP n1 $N1_ID
-$N2_IP n2 $N2_ID
-$N3_IP n3 $N3_ID
-$N4_IP n4 $N4_ID
-$N5_IP n5 $N5_ID
+$MG_IP mgmt $MG_ID
+$M1_IP mon-node1 $M1_ID
+$M1_IP mon-node2 $M1_ID
+$M2_IP mon-node3 $M2_ID
+$O1_IP osd-node1 $O1_ID
+$O2_IP osd-node2 $O2_ID
+$O3_IP osd-node3 $O3_ID
 EOF
 
 #setup ssh known_hosts
-ssh-keyscan -t rsa n1 > ~/.ssh/known_hosts
-ssh-keyscan -t rsa n2 >> ~/.ssh/known_hosts
-ssh-keyscan -t rsa n3 >> ~/.ssh/known_hosts
-ssh-keyscan -t rsa n4 >> ~/.ssh/known_hosts
-ssh-keyscan -t rsa n5 >> ~/.ssh/known_hosts
+ssh-keyscan -t rsa mgmt > ~/.ssh/known_hosts
+ssh-keyscan -t rsa mon-node1 > ~/.ssh/known_hosts
+ssh-keyscan -t rsa mon-node2 >> ~/.ssh/known_hosts
+ssh-keyscan -t rsa mon-node3 >> ~/.ssh/known_hosts
+ssh-keyscan -t rsa osd-node1 >> ~/.ssh/known_hosts
+ssh-keyscan -t rsa osd-node2 >> ~/.ssh/known_hosts
+ssh-keyscan -t rsa osd-node3 >> ~/.ssh/known_hosts
 
-scp /etc/hosts n1:/etc/hosts
-scp /etc/hosts n2:/etc/hosts
-scp /etc/hosts n3:/etc/hosts
-scp /etc/hosts n4:/etc/hosts
-scp /etc/hosts n5:/etc/hosts
+scp /etc/hosts mgmt:/etc/hosts
+scp /etc/hosts mon-node1:/etc/hosts
+scp /etc/hosts mon-node2:/etc/hosts
+scp /etc/hosts mon-node3:/etc/hosts
+scp /etc/hosts osd-node1:/etc/hosts
+scp /etc/hosts osd-node2:/etc/hosts
+scp /etc/hosts osd-node3:/etc/hosts
 
 echo ""
 
 cat <<EOF 
-Welcome to Jepsen on Docker
+Welcome to Ceph on Docker
 ===========================
 
-This container runs the Jepsen tests in sub-containers.
+This container runs the Ceph tests in sub-containers.
 
-You are currently in the base dir of the git repo for Jepsen.
-If you modify the core jepsen library make sure you "lein install" it so other tests can access.
+You are currently in the base dir of the git repo for Ceph.
+If you modify the core Ceph library make sure you "lein install" it so other tests can access.
 
 To run a test:
    cd elasticsearch && lein test 
