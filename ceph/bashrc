@@ -8,6 +8,7 @@ then
 
     #import the image
     cat /root/cephnode.tar.gz | docker import - cephnode
+    cat /root/cephmgmt.tar.gz | docker import - cephmgmt
 
     # start the 5 nodes
     docker run --privileged -d --name mgmt -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" cephnode /run.sh

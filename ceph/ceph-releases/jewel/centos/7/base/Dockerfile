@@ -3,7 +3,8 @@
 # CEPH VERSION DETAIL: 0.94.x
 
 FROM centos:7
-MAINTAINER Sébastien Han "seb@redhat.com"
+#FROM ceph/base:tag-build-master-jewel-centos-7
+MAINTAINER gator1 "gator1@github.com"
 
 
 # Install prerequisites
@@ -27,6 +28,7 @@ RUN chmod +x /*.sh
 ENV AUTHORIZED_KEYS **None**
 
 RUN mkdir /var/run/sshd
+RUN sed -i "s/UsePrivilegeSeparation.*/UsePrivilegeSeparation no/g" /etc/ssh/sshd_config
 RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
 RUN ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ''
 RUN ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''

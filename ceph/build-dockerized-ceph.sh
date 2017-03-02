@@ -3,8 +3,9 @@
 #gen sshkey
 ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
 
+
 #start one node and install deps
-docker run -d --name n1 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" gators/ceph-centos-base
+docker run -d --name n1 -e ROOT_PASS="root" -e AUTHORIZED_KEYS="`cat ~/.ssh/id_rsa.pub`" gators/ceph-mgmt
 N1_IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' n1)
 
 sleep 10
@@ -13,4 +14,5 @@ sleep 10
 
 docker export n1 > /root/cephnode.tar
 gzip /root/cephnode.tar
+
 
