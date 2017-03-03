@@ -62,7 +62,7 @@ EOF
 
 #setup ssh known_hosts
 ssh-keyscan -t rsa mgmt > ~/.ssh/known_hosts
-ssh-keyscan -t rsa mon-node1 > ~/.ssh/known_hosts
+ssh-keyscan -t rsa mon-node1 >> ~/.ssh/known_hosts
 ssh-keyscan -t rsa mon-node2 >> ~/.ssh/known_hosts
 ssh-keyscan -t rsa mon-node3 >> ~/.ssh/known_hosts
 ssh-keyscan -t rsa osd-node1 >> ~/.ssh/known_hosts

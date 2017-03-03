@@ -17,11 +17,6 @@ if [ "${AUTHORIZED_KEYS}" != "**None**" ]; then
             echo "$x" >> /root/.ssh/authorized_keys
         fi
     done
-    #cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-#    if [ "${ID_RSA}" != "**None**" ]; then
-#        echo ${ID_RSA} >> /root/.ssh/id_rsa
-#        chmod 600 /root/.ssh/id_rsa
-#    fi
 fi
 
 if [ ! -f /.root_pw_set ]; then

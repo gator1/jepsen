@@ -34,6 +34,12 @@ RUN ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ''
 RUN ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
 
 #RUN /usr/sbin/sshd -D
+RUN rm -rf /mnt
+COPY mnt /mnt
+COPY docker/RHCS2-repo-server.repo /etc/yum.repos.d
+COPY docker/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg
+#RUN yum clean all
+#RUN yum repolist
 
 EXPOSE 22
 CMD ["/run.sh"]
