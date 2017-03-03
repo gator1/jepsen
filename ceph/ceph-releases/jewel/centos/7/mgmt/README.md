@@ -1,4 +1,4 @@
-# ceph-base
+# ceph-mgmt
 
 Ceph base image (CentOS (latest) with the latest Ceph release installed).
 

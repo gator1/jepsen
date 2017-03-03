@@ -1,4 +1,4 @@
-Dockerized Jepsen
+Dockerized Ceph
 =================
 
 This docker image attempts to simplify the setup required by ceph.
