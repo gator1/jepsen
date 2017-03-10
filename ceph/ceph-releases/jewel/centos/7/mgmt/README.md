@@ -35,20 +35,24 @@ after a reboot.
 so build everything up from /mnt1 and copy over
 
 1. git clone https://garyxia@bitbucket.org/garyxia/docker.git
+
   @ /root for instance
 
-2. mkdir -p /mnt1/rhcs2
-   mkdir -p /mnt1/rhscon2
+2. mkdir -p mnt1/rhcs2
 
-3. mount -o loop,ro /root/docker/rhceph-2.0-rhel-7-x86_64.iso /mnt1/rhcs2
-   mount -o loop,ro /root/docker/rhscon-2.0-rhel-7-x86_64.iso /mnt1/rhscon2
+   mkdir -p mnt1/rhscon2
 
-4. rm -rf /mnt
-   cp -r /mnt1 mnt
+3. mount -o loop,ro docker/rhceph-2.0-rhel-7-x86_64.iso mnt1/rhcs2
+
+   mount -o loop,ro docker/rhscon-2.0-rhel-7-x86_64.iso mnt1/rhscon2
+
+4. rm -rf mnt
+   cp -r mnt1 mnt
    copy to /mnt so it sticks. 
 
-4. cp /root/docker/RHCS2-repo-server.repo /etc/yum.repos.d
+5. cp /root/docker/RHCS2-repo-server.repo /etc/yum.repos.d
+
    cp /root/docker/RPM-GPG-KEY-redhat-release /etc/pki//etc/pki/rpm-gpg
 
-4 yum clean all
+6 yum clean all
   yum repolist
