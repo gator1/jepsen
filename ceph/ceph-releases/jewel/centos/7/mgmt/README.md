@@ -47,12 +47,14 @@ so build everything up from /mnt1 and copy over
    mount -o loop,ro docker/rhscon-2.0-rhel-7-x86_64.iso mnt1/rhscon2
 
 4. rm -rf mnt
+
    cp -r mnt1 mnt
+
    copy to /mnt so it sticks. 
 
-5. cp /root/docker/RHCS2-repo-server.repo /etc/yum.repos.d
+5. cp docker/RHCS2-repo-server.repo /etc/yum.repos.d
 
-   cp /root/docker/RPM-GPG-KEY-redhat-release /etc/pki//etc/pki/rpm-gpg
+   cp docker/RPM-GPG-KEY-redhat-release /etc/pki//etc/pki/rpm-gpg
 
-6 yum clean all
+6. yum clean all
   yum repolist
