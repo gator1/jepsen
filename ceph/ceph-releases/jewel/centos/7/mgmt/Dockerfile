@@ -2,21 +2,22 @@
 # CEPH VERSION: Jewel
 # CEPH VERSION DETAIL: 0.94.x
 
-FROM centos:7
-#FROM ceph/base:tag-build-master-jewel-centos-7
+#FROM centos:7
+FROM ceph/base:tag-build-master-jewel-centos-7
 MAINTAINER gator1 "gator1@github.com"
 
+ENV ANSIBLE_GIT_URL https://github.com/ceph/ceph-ansible.git
 
 # Install prerequisites
-RUN yum install -y unzip net-tools 
+RUN yum install -y unzip net-tools  git which redhat-lsb-core
 
-RUN yum install -y openssh-server openssh-clients openssl-libs git sudo
+RUN yum install -y openssh-server openssh-clients openssl-libs iproute
 #RUN yum install -y pwgen
 
-RUN useradd -ms /bin/bash ceph
-RUN echo "ceph:ceph" | chpasswd
-RUN usermod -a -G root ceph
-RUN usermod -g wheel ceph
+#RUN useradd -ms /bin/bash ceph
+#RUN echo "ceph:ceph" | chpasswd
+#RUN usermod -a -G root ceph
+#RUN usermod -g wheel ceph
 
 #ADD entrypoint.sh /entrypoint.sh
 #ENTRYPOINT ["/entrypoint.sh"]
@@ -38,6 +39,10 @@ RUN rm -rf /mnt
 COPY mnt /mnt
 COPY docker/RHCS2-repo-server.repo /etc/yum.repos.d
 COPY docker/RPM-GPG-KEY-redhat-release /etc/pki/rpm-gpg
+COPY docker/rhceph-2.0-rhel-7-x86_64.iso /root
+COPY docker/rhscon-2.0-rhel-7-x86_64.iso /root
+
+RUN git clone $ANSIBLE_GIT_URL /root/ceph-ansible  
 #RUN yum clean all
 #RUN yum repolist
 
