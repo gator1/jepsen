@@ -1,7 +1,7 @@
-(ns file-r.core-test
+(ns file-e.core-test
   (:require [clojure.test :refer :all]
-            [file-r.core :refer :all]
-            [file-r.nemesis :refer :all]
+            [file-e.core :refer :all]
+            [file-e.nemesis :refer :all]
             [jepsen.core :as jepsen]
             [jepsen.generator :as gen]
             [jepsen.nemesis :as nemesis]
@@ -21,9 +21,9 @@
                :generator (->> (gen/mix [r w cas])
                                (gen/stagger 1)
                                (gen/nemesis
-                                 (gen/seq (cycle [(gen/sleep 5)
+                                 (gen/seq (cycle [(gen/sleep 2)
                                                   {:type :info, :f :start}
-                                                  (gen/sleep 5)
+                                                  (gen/sleep 2)
                                                   {:type :info, :f :stop}])))
                                (gen/time-limit 10))
                :model (cas-register 0)

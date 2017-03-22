@@ -1,4 +1,4 @@
-(ns file-r.core
+(ns file-e.core
   (:require [clojure.tools.logging :refer :all]
             [jepsen [core :as jepsen]
              [client :as client]
@@ -15,8 +15,9 @@
   (:use     [clojure.java.shell :only [sh]]) )
 
 ; define path
-(def ^:private file-path "/home/gary/jepsen/file-s/mount/n")
-(def ^:private temp-path "/home/gary/jepsen/file-s/data/")
+;(def ^:private file-path "/home/gary/mike/gator1/jepsen/file-r/mount/n")
+(def ^:private file-path "mount/n")
+(def ^:private temp-path "/home/gary/mike/gator1/jepsen/file-r/data/")
 
 ; define operations
 (defn r   [_ _] {:type :invoke, :f :read, :value nil})
@@ -26,19 +27,21 @@
 (defn nid
   [n]
   (->> (str n)
-       (re-find #"\d+")
-       (Integer. )))
+    (re-find #"\d+")
+    (Integer. )))
 
 (defn get-reg
   [loc]
-  (info (str "get-reg" loc "\n"))
-  (->> (sh "cat" loc)
-       :out
-       edn/read-string))
+  (Integer. (re-find  #"\d+" (slurp loc))))
+
+;    (->> (sh "cat" loc)
+;      :out
+;      edn/read-string)))
 
 (defn set-reg
   [loc val]
-  (sh "sh" "-c" (str "echo " val " > " loc)))
+  (spit loc val))
+;  (sh "sh" "-c" (str "echo " val " > " loc)))
 
 (defn location
   [n]
@@ -52,21 +55,21 @@
       (let [loc (location node)]
         (set-reg loc 0)
         (client-nfs loc)))
-
+    
     (invoke! [this test op]
       (timeout 5000 (assoc op :type :info, :error :timeout)
                (case (:f op)
                  :read  (assoc op :type :ok, :value (get-reg loc))
-
+                 
                  :write (do (set-reg loc (:value op))
-                            (assoc op :type :ok))
-
+                          (assoc op :type :ok))
+                 
                  :cas   (let [[value value'] (:value op)]
                           (if (= (get-reg loc) value)
                             (do (set-reg loc value')
-                                (assoc op :type :ok))
+                              (assoc op :type :ok))
                             (assoc op :type :fail))))))
-
+    
     (teardown! [_ test])))
 
 (def ^:private key-list [10 20 30 40 50])
@@ -89,11 +92,11 @@
   (let [temp (str temp-path "temp" n)
         data (str file-path n "/data")
         pos (* skip-size (- (/ key 10) 1))]
-
+    
     (let [ret (->> (str "cat " temp)
-;                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
-                   (str "dd if=" data " skip=" pos " of=" temp " count=1;")
-                   (sh "sh" "-c"))]
+                ;                   (str "dd if=" data " skip=" pos " of=" temp " count=1 iflag=direct;")
+                (str "dd if=" data " skip=" pos " of=" temp " count=1;")
+                (sh "sh" "-c"))]
       (if (= 0 (:exit ret)) (edn/read-string (:out ret)) -1))))
 
 (defn set-multi-data
@@ -101,10 +104,10 @@
   (let [temp (str temp-path "temp" n)
         data (str file-path n "/data")
         pos (* skip-size (- (/ key 10) 1))]
-;    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
+    ;    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
     (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 conv=notrunc")
-                   (str "echo " val " > " temp ";")
-                   (sh "sh" "-c"))]
+                (str "echo " val " > " temp ";")
+                (sh "sh" "-c"))]
       (if (= 0 (:exit ret)) 0 -1))))
 
 (defn init-multi-data
@@ -120,7 +123,7 @@
     (setup! [this test node]
       (init-multi-data (nid node) 4096) ;move to core_test in real
       (client-multi (nid node)))
-
+    
     (invoke! [this test op]
       (timeout 5000 (assoc op :type :info :error :timeout)
                (case (:f op)
@@ -129,13 +132,13 @@
                           :read (let [v (get-multi-data n key)
                                       t (independent/tuple key [[:read k v]])]
                                   (if (> 0 v) (assoc op :type :fail)
-                                              (assoc op :type :ok, :value t)))
-
+                                    (assoc op :type :ok, :value t)))
+                          
                           :write (let [r (set-multi-data n key v)]
                                    (if (> 0 r) (assoc op :type :fail)
-                                               (assoc op :type :ok)))
+                                     (assoc op :type :ok)))
                           )))))
-
+    
     (teardown! [_ test])))
 
 ; partition node for perf test
