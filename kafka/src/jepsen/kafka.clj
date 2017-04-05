@@ -133,7 +133,7 @@
 (defn db
     "Kafka DB for a particular version."
     [version]
-    (let [zk (zk/db "3.4.5+dfsg-2")]
+    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
       (reify db/DB
         (setup!  [_ test node]
           (info "setup! zk " node)
