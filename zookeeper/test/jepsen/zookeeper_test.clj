@@ -6,9 +6,9 @@
             [jepsen.zookeeper :as zk]))
 
 (deftest zk-test
-  (is (:valid? (:results (jepsen/run! (zk/zk-test "3.4.5+dfsg-2"))))))
+  (is (:valid? (:results (jepsen/run! (zk/zk-test "3.4.5+dfsg-2+deb8u1"))))))
 
-(deftest zk-linearizable-analysis-test
-  (is (:valid? (:results (jepsen/analyze! (assoc (zk/zk-test "3.4.5+dfsg-2")
+(comment (deftest zk-linearizable-analysis-test
+  (is (:valid? (:results (jepsen/analyze! (assoc (zk/zk-test "3.4.5+dfsg-2+deb8u1")
                                                  :checker checker/linearizable)
-                          "/huawei/jepsen/zookeeper/store/latest")))))
+                          "/huawei/jepsen/zookeeper/store/latest"))))))
