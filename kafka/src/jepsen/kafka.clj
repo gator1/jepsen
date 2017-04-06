@@ -268,4 +268,6 @@
              :generator  (->>  (gen/queue)
                                (gen/delay 1)
                                std-gen)
+             :checker (checker/compose {:queue       checker/total-queue
+                                        :latency     (checker/latency-graph)})}
       ))
