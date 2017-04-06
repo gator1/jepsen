@@ -258,7 +258,7 @@
                                             :f    :drain})))))
 
 
-(defn kafka-test
+(comment (defn kafka-test
     [version]
       (assoc  tests/noop-test
              :os debian/os
@@ -272,4 +272,32 @@
              :generator  (->>  (gen/queue)
                                (gen/delay 1)
                                std-gen)
-      ))
+      )))
+
+(defn kafka-test
+  [name opts version]
+  (merge tests/noop-test
+         {:name    (str "kafka " name)
+          :client  (client)
+          :os      debian/os
+          :db      (db version)
+          :model   (model/unordered-queue)
+          :generator (->> (gen/queue)
+                          (gen/delay 1)
+                          std-gen)
+          :checker (checker/compose {:queue       checker/total-queue
+                                     :latency     (checker/latency-graph)})}
+         opts))
+
+(defn single-node-restarts-test
+  [version]
+  (kafka-test "single node restarts"
+               {:nemesis   (killer)}
+               version))
+
+(defn partitions-test
+  [version]
+  (kafka-test "partitions"
+               {:nemesis (nemesis/partition-random-halves)}
+               version))
+
