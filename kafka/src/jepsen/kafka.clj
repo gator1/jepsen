@@ -232,6 +232,15 @@
 
 (defn client [] (Client. nil nil))
 
+; Nemeses
+
+(defn killer
+  "Kills a random node on start, restarts it on stop."
+  []
+  (nemesis/node-start-stopper
+    rand-nth
+    (fn start [test node] (stop! node))
+    (fn stop  [test node] (start! node test))))
 
 ; Generators
 
