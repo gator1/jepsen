@@ -264,10 +264,12 @@
              :os debian/os
              :db  (db version)
              :client  (client)
+             :nemesis    (nemesis/partition-random-halves)
              :model   (model/unordered-queue)
+             :checker    (checker/compose
+                           {:queue       checker/queue
+                            :total-queue checker/total-queue})
              :generator  (->>  (gen/queue)
                                (gen/delay 1)
                                std-gen)
-             :checker (checker/compose {:queue       checker/total-queue
-                                        :latency     (checker/latency-graph)})
       ))
