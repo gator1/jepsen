@@ -151,7 +151,7 @@
   client/Client
   (setup!  [this test node]
            (info "setup! client called" node)
-           (let [broker (->> (zk/brokers {"zookeeper.connect" (str (name node) ":2181")})
+           (let [broker (->> (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})
                              (filter #(= (:host %) (name node)))
                              first)
                  producer (producer/producer {"metadata.broker.list" (str (name node) ":9092")
