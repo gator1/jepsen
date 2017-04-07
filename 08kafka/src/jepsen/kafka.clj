@@ -136,20 +136,6 @@
 
 
 (defn dequeue!
-    "Given a client and an :invoke :dequeue op, dequeues and acks a job."
-    [test node op]
-    (info "dequeue! called" )
-    (timeout 10000  (assoc op :type :info, :error :timeout)
-        (def config  {"zookeeper.connect" (str (name node) ":2182")
-                  "group.id" "clj-kafka.consumer"
-                  "auto.offset.reset" "smallest"
-                  "auto.commit.enable" "false"})
-        (ckafka/with-resource  [c  (consumer/consumer config)]
-              consumer/shutdown
-              (doall (take 2  (consumer/messages c "jepsen"))))
-  ))
-
-(defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
   [client queue op]
@@ -165,11 +151,14 @@
   client/Client
   (setup!  [this test node]
            (info "setup! client called" node)
-           (let [producer (producer/producer {"metadata.broker.list" (str (name node) ":9092")
+           (let [broker (->> (zk/brokers {"zookeeper.connect" (str (name node) ":2181")})
+                             (filter #(= (:host %) (name node)))
+                             first)
+                 producer (producer/producer {"metadata.broker.list" (str (name node) ":9092")
                                                                  "request.required.acks" "-1" ; all in-sync brokers
                                                                  "producer.type"         "sync"
-                                                                 "message.send.max_retries" "1"
-                                                                 "connect.timeout.ms"    "1000"
+                                                                 ;"message.send.max_retries" "1"
+                                                                 ;"connect.timeout.ms"    "1000"
                                                                  "retry.backoff.ms"       "1000"
                                                                  "serializer.class" "kafka.serializer.DefaultEncoder"
                                                                  "partitioner.class" "kafka.producer.DefaultPartitioner"})
