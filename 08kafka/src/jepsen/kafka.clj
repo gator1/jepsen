@@ -93,19 +93,20 @@
 ;        kafka "kafka_2.11-0.8.2.2"
 
 ;        kafka "kafka_2.10-0.8.2.1"
+;2.10-0.8.2.1
 
 (defn install! [node version]
    ; Install specific versions
   (info "install! Kafka begins" node )
   (let [id  (Integer.  (re-find #"\d+", (name node)))
-        kafka "kafka_2.11-0.8.2.2"]
+        kafka "kafka_2.10-0.8.2.1"]
     (c/exec :apt-get :update)
     (c/exec :apt-get :install :-y :--force-yes "default-jre")
     (c/exec :apt-get :install :-y :--force-yes "wget")
     (c/exec :rm :-rf "/opt/")
     (c/exec :mkdir :-p "/opt/")
     (c/cd "/opt/"
-          (c/exec :wget (format "http://apache.claz.org/kafka/0.8.2.2/%s.tgz" kafka))
+          (c/exec :wget (format "http://apache.claz.org/kafka/0.8.2.1/%s.tgz" kafka))
           (c/exec :gzip :-d (format "%s.tgz" kafka))
           (c/exec :tar :xf (format "%s.tar" kafka))
           (c/exec :mv kafka "kafka")
