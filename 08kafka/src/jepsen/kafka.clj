@@ -67,7 +67,6 @@
 
 (defn nuke!
   []
-  ;(zk/nuke)
   (stop! )
   (c/su
     (stop!)
@@ -133,9 +132,10 @@
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
-          ;(info "tearing down Kafka NUKE!!!" node)
-          ;(nuke!)
-          ;(info "Kafka NUKED!!!" node)
+          (db/teardown! zk test node)
+          (info "tearing down Kafka NUKE!!!" node)
+          (nuke!)
+          (info "Kafka NUKED!!!" node)
           ))))
 
 
