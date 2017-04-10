@@ -158,7 +158,7 @@
            (let [;broker (->> (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})
                  ;            (filter #(= (:host %) (name node)))
                  ;            first)
-                 a1 (println "starting client producer.")
+                 a1 (info "starting client producer." node)
                  producer (producer/producer {"metadata.broker.list" (str (name node) ":9092")
                                                                  "request.required.acks" "-1" ; all in-sync brokers
                                                                  "producer.type"         "sync"
@@ -167,13 +167,13 @@
                                                                  "retry.backoff.ms"       "1000"
                                                                  "serializer.class" "kafka.serializer.DefaultEncoder"
                                                                  "partitioner.class" "kafka.producer.DefaultPartitioner"})
-                 a2 (println "starting client consumer")
+                 a2 (info "starting client consumer" node)
                  consumer (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
                                                                  "group.id"            "jepsen.consumer"
                                                                  "auto.offset.reset"   "smallest"
                                                                  "auto.commit.enable"  "true"})
                  client {:producer producer :consumer consumer}]
-            (println "done client setup...")
+            (info "done client setup..." node)
             (assoc this :client client)))
 
   (teardown!  [_ test]
