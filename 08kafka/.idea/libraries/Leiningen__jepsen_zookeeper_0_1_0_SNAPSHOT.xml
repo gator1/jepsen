@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: jepsen.zookeeper:0.1.0-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/jepsen/zookeeper/jepsen.zookeeper/0.1.0-SNAPSHOT/jepsen.zookeeper-0.1.0-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: org.clojars.achim/multiset:0.1.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojars/achim/multiset/0.1.0/multiset-0.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

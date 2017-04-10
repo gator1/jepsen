@@ -81,8 +81,8 @@
     ; (info "deploy calls set-broker-id!" filename node id )
     (set-broker-id! filename id)
     ; set advertised host name, otherwise it is canonical name
-    (info "setting advertised host name to" (name node))
-    (c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
+    ;(info "setting advertised host name to" (name node))
+    ;(c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
     ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deplpoy start! begins" id )
     (start! id)
@@ -132,10 +132,11 @@
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
-          (db/teardown! zk test node)
-          (info "tearing down Kafka NUKE!!!" node)
-          (nuke!)
-          (info "Kafka NUKED!!!" node)
+          ;(info "tearing down Zookeeper")
+          ;(db/teardown! zk test node)
+          ;(info "tearing down Kafka NUKE!!!" node)
+          ;(nuke!)
+          ;(info "Kafka NUKED!!!" node)
           ))))
 
 
