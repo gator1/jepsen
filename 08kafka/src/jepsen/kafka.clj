@@ -186,7 +186,7 @@
          :enqueue (timeout 10000  (assoc op :type :info, :error :timeout)
                     (producer/send-message (:producer client)  (producer/message queue (codec/encode (:value op))))
                     (assoc op :type :ok))
-         :dequeue  (dequeue! (:consumer client) op queue)
+         :dequeue  (dequeue! client queue op)
          :drain  (timeout 10000 (assoc op :type :info :value :timeout)
                                            (loop []
                                              (let [op' (->> (assoc op
