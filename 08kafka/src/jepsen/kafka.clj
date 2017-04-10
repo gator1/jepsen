@@ -80,9 +80,9 @@
 (defn deploy [id node version]
   (let [filename "/opt/kafka/config/server.properties"]
     ; (info "deploy calls set-broker-id!" filename node id )
-    (set-broker-id! filename id))
+    (set-broker-id! filename id)
     ; set advertised host name, otherwise it is canonical name
-    (info "setting advertised host name to" (name mode))
+    (info "setting advertised host name to" (name node))
     (c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
     ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deplpoy start! begins" id )
@@ -91,7 +91,7 @@
     ; Create topic asynchronously
     (when (= id 1)
        (future  (create-topic)))
-)
+  ))
 
 ;        kafka "kafka_2.11-0.8.2.2"
 
