@@ -77,11 +77,13 @@
 (defn set-broker-id! [filename id]
    (c/exec  (c/lit  (format "sed -i.bak '/^broker\\.id/s/^.*$/broker.id=%s/' %s"     id filename))))
 
-
 (defn deploy [id node version]
   (let [filename "/opt/kafka/config/server.properties"]
     ; (info "deploy calls set-broker-id!" filename node id )
     (set-broker-id! filename id))
+    ; set advertised host name, otherwise it is canonical name
+    (info "setting advertised host name to" (name mode))
+    (c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
     ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deplpoy start! begins" id )
     (start! id)
