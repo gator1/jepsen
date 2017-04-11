@@ -165,7 +165,7 @@
   corresponding operation."
   [client queue op]
   (timeout 5000 (assoc op :type :fail :value :timeout)
-           (let [value (dequeue-only! (:node client))]
+           (let [value (dequeue-only! (:node client) queue)]
                 (if (nil? value)
                   (assoc op :type :fail :value :exhausted)
                   (assoc op :type :ok :value value)))))
