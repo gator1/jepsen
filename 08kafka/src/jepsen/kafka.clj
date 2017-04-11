@@ -132,11 +132,11 @@
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
-          ;(info "tearing down Zookeeper")
-          ;(db/teardown! zk test node)
-          ;(info "tearing down Kafka NUKE!!!" node)
-          ;(nuke!)
-          ;(info "Kafka NUKED!!!" node)
+          (info "tearing down Zookeeper")
+          (db/teardown! zk test node)
+          (info "tearing down Kafka NUKE!!!" node)
+          (nuke!)
+          (info "Kafka NUKED!!!" node)
           ))))
 
 
