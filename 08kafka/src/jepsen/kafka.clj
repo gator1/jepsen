@@ -145,11 +145,18 @@
   corresponding operation."
   [client queue op]
   (timeout 5000 (assoc op :type :fail :value :timeout)
-           (let [message (first (consumer/messages (:consumer client) queue))
-                 value (codec/decode (:value message))]
-             (if (nil? message)
-               (assoc op :type :fail :value :exhausted)
-               (assoc op :type :ok :value value)))))
+           (kafka/with-resource
+             [consumer (consumer/consumer
+                         {"zookeeper.connect"   (str (name node) ":2181")
+                          "group.id"            "jepsen.consumer"
+                          "auto.offset.reset"   "smallest"
+                          "auto.commit.enable"  "true"})]
+             consumer/shutdown
+              (let [message (first (consumer/messages consumer queue))
+                    value (codec/decode (:value message))]
+                (if (nil? message)
+                 (assoc op :type :fail :value :exhausted)
+                 (assoc op :type :ok :value value))))))
 
 
 (defrecord Client [client queue]
@@ -168,17 +175,17 @@
                                                                  "retry.backoff.ms"       "1000"
                                                                  "serializer.class" "kafka.serializer.DefaultEncoder"
                                                                  "partitioner.class" "kafka.producer.DefaultPartitioner"})
-                 a2 (info "starting client consumer" node)
-                 consumer (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
-                                                                 "group.id"            "jepsen.consumer"
-                                                                 "auto.offset.reset"   "smallest"
-                                                                 "auto.commit.enable"  "true"})
-                 client {:producer producer :consumer consumer}]
+                 ;a2 (info "starting client consumer" node)
+                 ;consumer (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
+                 ;                                                "group.id"            "jepsen.consumer"
+                 ;                                                "auto.offset.reset"   "smallest"
+                 ;                                                "auto.commit.enable"  "true"})
+                 client {:producer producer :consumer nil}]
             (info "done client setup..." node)
             (assoc this :client client)))
 
   (teardown!  [_ test]
-    (consumer/shutdown (:consumer client))
+    ;(consumer/shutdown (:consumer client))
     )
 
   (invoke!  [this test op]
