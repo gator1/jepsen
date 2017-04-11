@@ -162,6 +162,27 @@
         consumer/shutdown
         (dequeue-messages! (consumer/messages consumer queue))))
 
+(defn drain!
+      "Returns a sequence of all elements available within dt millis."
+      [node queue]
+      (ckafka/with-resource
+        [consumer (consumer node)]
+        consumer/shutdown
+        (let [done (atom [])]
+             (loop [coll (consumer/messages consumer queue)]
+                   (if (-> done
+                           (swap! conj (first coll))
+                           future
+                           (deref 10000 ::timeout)
+                           (= ::timeout))
+                     @done
+                     (recur (rest coll)))))))
+
+(comment (defn drain! [node queue]
+      (ckafka/with-resource
+        [consumer (consumer node)]
+        (doall (consumer/messages consumer queue)))))
+
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
@@ -182,8 +203,8 @@
                           "serializer.class" "kafka.serializer.DefaultEncoder"
                           "partitioner.class" "kafka.producer.DefaultPartitioner"}))
 
-(defn enqueue-only! [producer queue value]
-      (producer/send-message producer  (producer/message queue (codec/encode value))))
+(defn enqueue-only! [node queue value]
+      (producer/send-message (producer node) (producer/message queue (codec/encode value))))
 
 (defn brokers [node]
       (czk/brokers {"zookeeper.connect" (str (name node) ":2181")}))
@@ -212,7 +233,7 @@
   (invoke!  [this test op]
      (case  (:f op)
          :enqueue (timeout 10000  (assoc op :type :info, :error :timeout)
-                    (enqueue-only! (:producer client) queue (:value op))
+                    (enqueue-only! (:node client) queue (:value op))
                     (assoc op :type :ok))
          :dequeue  (dequeue! client queue op)
          :drain  (timeout 10000 (assoc op :type :info :value :timeout)
