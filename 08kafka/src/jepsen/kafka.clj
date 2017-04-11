@@ -45,8 +45,8 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-       (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))
-          (c/exec (c/lit "/opt/kafka/bin/kafka")))
+       (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties")))
+       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
 )
