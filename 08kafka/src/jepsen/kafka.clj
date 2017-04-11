@@ -89,8 +89,8 @@
     (start! id)
     (info "deplpoy start! ends!" id )
     ; Create topic asynchronously
-    ;(when (= id 1)
-    ;   (future  (create-topic)))
+    (when (= id 1)
+       (future  (create-topic)))
   ))
 
 ;        kafka "kafka_2.11-0.8.2.2"
@@ -202,7 +202,6 @@
                  ;consumer (consumer node)
                  ;messages (consumer/messages consumer queue)
                  client {:producer producer :consumer nil :node node :messages nil}]
-            (if (= node :n1) (create-topic))
             (info "done client setup..." node)
             (assoc this :client client)))
 
