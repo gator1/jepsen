@@ -45,7 +45,8 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-       (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties")))
+       (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))
+          (c/exec (c/lit "/opt/kafka/bin/kafka")))
     (info "start!  ends" id)
   )
 )
@@ -140,8 +141,9 @@
           ))))
 
 (defn test-setup-all []
-      (let [db (db "3.4.5+dfsg-2")]
-           (doall (map #(c/on % (db/setup! db "jepsen" %)) [:n1 :n2 :n3 :n4 :n5]))))
+      (let [db (db "3.4.5+dfsg-2")
+            test tests/noop-test]
+           (doall (map #(c/on % (db/setup! db test %)) [:n1 :n2 :n3 :n4 :n5]))))
 
 (defn dequeue-messages! [messages]
       (let [message (first messages)
@@ -183,11 +185,14 @@
 (defn enqueue-only! [producer queue value]
       (producer/send-message producer  (producer/message queue (codec/encode value))))
 
+(defn brokers [node]
+      (czk/brokers {"zookeeper.connect" (str (name node) ":2181")}))
+
 (defrecord Client [client queue]
   client/Client
   (setup!  [this test node]
            (info "setup! client called" node)
-           (let [brokers (->> (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})
+           (let [brokers (->> (brokers node)
                              (filter #(= (:host %) (name node))))
                  ;            first)
                  a0 (info "brokers:" brokers)
