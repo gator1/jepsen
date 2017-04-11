@@ -143,9 +143,9 @@
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
-  [client queue op]
+  [node queue op]
   (timeout 5000 (assoc op :type :fail :value :timeout)
-           (kafka/with-resource
+           (ckafka/with-resource
              [consumer (consumer/consumer
                          {"zookeeper.connect"   (str (name node) ":2181")
                           "group.id"            "jepsen.consumer"
@@ -201,7 +201,7 @@
                                                                    :time (relative-time-nanos))
                                                             util/log-op
                                                             (jepsen/conj-op! test)
-                                                            (dequeue! client queue))]
+                                                            (dequeue! node queue))]
                                                ; Log completion
                                                (->> (assoc op' :time (relative-time-nanos))
                                                     util/log-op
