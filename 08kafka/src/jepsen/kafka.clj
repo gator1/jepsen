@@ -148,13 +148,15 @@
             value (if (nil? message) nil (codec/decode (:value message)))]
            value))
 
+(defn consumer [node]
+      (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
+                          "group.id"            "jepsen.consumer"
+                          "auto.offset.reset"   "smallest"
+                          "auto.commit.enable"  "true"}))
+
 (defn dequeue-only! [node queue]
       (ckafka/with-resource
-        [consumer (consumer/consumer
-                    {"zookeeper.connect"   (str (name node) ":2181")
-                     "group.id"            "jepsen.consumer"
-                     "auto.offset.reset"   "smallest"
-                     "auto.commit.enable"  "true"})]
+        [consumer (consumer node)]
         consumer/shutdown
         (dequeue-messages! (consumer/messages consumer queue))))
 
@@ -163,7 +165,7 @@
   corresponding operation."
   [client queue op]
   (timeout 5000 (assoc op :type :fail :value :timeout)
-           (let [value (dequeue-messages! (:messages client))]
+           (let [value (dequeue-only! (:node client))]
                 (if (nil? value)
                   (assoc op :type :fail :value :exhausted)
                   (assoc op :type :ok :value value)))))
@@ -191,18 +193,15 @@
                  a0 (info "brokers:" brokers)
                  a1 (info "starting client producer." node)
                  producer (producer node)
-                 a2 (info "starting client consumer" node)
-                 consumer (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
-                                                                 "group.id"            "jepsen.consumer"
-                                                                 "auto.offset.reset"   "smallest"
-                                                                 "auto.commit.enable"  "true"})
-                 messages (consumer/messages consumer queue)
-                 client {:producer producer :consumer nil :node node :messages messages}]
+                 ;a2 (info "starting client consumer" node)
+                 ;consumer (consumer node)
+                 ;messages (consumer/messages consumer queue)
+                 client {:producer producer :consumer nil :node node :messages nil}]
             (info "done client setup..." node)
             (assoc this :client client)))
 
   (teardown!  [_ test]
-    (consumer/shutdown (:consumer client))
+    ;(consumer/shutdown (:consumer client))
     )
 
   (invoke!  [this test op]

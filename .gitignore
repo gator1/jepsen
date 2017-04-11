@@ -30,3 +30,5 @@ bench/**
 /.nrepl-port
 .classpath
 .project
+.idea
+
