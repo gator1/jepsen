@@ -33,7 +33,7 @@
   []
   (Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic jepsen ")))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic jepsen ")))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -139,59 +139,76 @@
           (info "Kafka NUKED!!!" node)
           ))))
 
+(defn test-setup-all []
+      (let [db (db "3.4.5+dfsg-2")]
+           (doall (map #(c/on % (db/setup! db "jepsen" %)) [:n1 :n2 :n3 :n4 :n5]))))
+
+(defn dequeue-messages! [messages]
+      (let [message (first messages)
+            value (if (nil? message) nil (codec/decode (:value message)))]
+           value))
+
+(defn dequeue-only! [node queue]
+      (ckafka/with-resource
+        [consumer (consumer/consumer
+                    {"zookeeper.connect"   (str (name node) ":2181")
+                     "group.id"            "jepsen.consumer"
+                     "auto.offset.reset"   "smallest"
+                     "auto.commit.enable"  "true"})]
+        consumer/shutdown
+        (dequeue-messages! (consumer/messages consumer queue))))
 
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
   [client queue op]
   (timeout 5000 (assoc op :type :fail :value :timeout)
-           (ckafka/with-resource
-             [consumer (consumer/consumer
-                         {"zookeeper.connect"   (str (name (:node client)) ":2181")
-                          "group.id"            "jepsen.consumer"
-                          "auto.offset.reset"   "smallest"
-                          "auto.commit.enable"  "true"})]
-             consumer/shutdown
-              (let [message (first (consumer/messages consumer queue))
-                    value (codec/decode (:value message))]
-                (if (nil? message)
-                 (assoc op :type :fail :value :exhausted)
-                 (assoc op :type :ok :value value))))))
+           (let [value (dequeue-messages! (:messages client))]
+                (if (nil? value)
+                  (assoc op :type :fail :value :exhausted)
+                  (assoc op :type :ok :value value)))))
 
+(defn producer [node]
+      (producer/producer {"metadata.broker.list" (str (name node) ":9092")
+                          "request.required.acks" "-1" ; all in-sync brokers
+                          "producer.type"         "sync"
+                          ;"message.send.max_retries" "1"
+                          ;"connect.timeout.ms"    "1000"
+                          "retry.backoff.ms"       "1000"
+                          "serializer.class" "kafka.serializer.DefaultEncoder"
+                          "partitioner.class" "kafka.producer.DefaultPartitioner"}))
+
+(defn enqueue-only! [producer queue value]
+      (producer/send-message producer  (producer/message queue (codec/encode value))))
 
 (defrecord Client [client queue]
   client/Client
   (setup!  [this test node]
            (info "setup! client called" node)
-           (let [;broker (->> (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})
-                 ;            (filter #(= (:host %) (name node)))
+           (let [brokers (->> (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})
+                             (filter #(= (:host %) (name node))))
                  ;            first)
+                 a0 (info "brokers:" brokers)
                  a1 (info "starting client producer." node)
-                 producer (producer/producer {"metadata.broker.list" (str (name node) ":9092")
-                                                                 "request.required.acks" "-1" ; all in-sync brokers
-                                                                 "producer.type"         "sync"
-                                                                 ;"message.send.max_retries" "1"
-                                                                 ;"connect.timeout.ms"    "1000"
-                                                                 "retry.backoff.ms"       "1000"
-                                                                 "serializer.class" "kafka.serializer.DefaultEncoder"
-                                                                 "partitioner.class" "kafka.producer.DefaultPartitioner"})
-                 ;a2 (info "starting client consumer" node)
-                 ;consumer (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
-                 ;                                                "group.id"            "jepsen.consumer"
-                 ;                                                "auto.offset.reset"   "smallest"
-                 ;                                                "auto.commit.enable"  "true"})
-                 client {:producer producer :consumer nil :node node}]
+                 producer (producer node)
+                 a2 (info "starting client consumer" node)
+                 consumer (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
+                                                                 "group.id"            "jepsen.consumer"
+                                                                 "auto.offset.reset"   "smallest"
+                                                                 "auto.commit.enable"  "true"})
+                 messages (consumer/messages consumer queue)
+                 client {:producer producer :consumer nil :node node :messages messages}]
             (info "done client setup..." node)
             (assoc this :client client)))
 
   (teardown!  [_ test]
-    ;(consumer/shutdown (:consumer client))
+    (consumer/shutdown (:consumer client))
     )
 
   (invoke!  [this test op]
      (case  (:f op)
          :enqueue (timeout 10000  (assoc op :type :info, :error :timeout)
-                    (producer/send-message (:producer client)  (producer/message queue (codec/encode (:value op))))
+                    (enqueue-only! (:producer client) queue (:value op))
                     (assoc op :type :ok))
          :dequeue  (dequeue! client queue op)
          :drain  (timeout 10000 (assoc op :type :info :value :timeout)
@@ -250,7 +267,7 @@
              :db  (db version)
              :client  (client)
              :model   (model/unordered-queue)
-             :nemesis (nemesis/partition-random-halves)
+             ;:nemesis (nemesis/partition-random-halves)
              :checker    (checker/compose
                             {:queue       checker/queue
                             :total-queue checker/total-queue})
