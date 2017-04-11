@@ -31,9 +31,9 @@
 
 (defn create-topic
   []
-  (Thread/sleep 20)
+  ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic jepsen ")))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic jepsen ")))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -88,8 +88,8 @@
     (start! id)
     (info "deplpoy start! ends!" id )
     ; Create topic asynchronously
-    (when (= id 1)
-       (future  (create-topic)))
+    ;(when (= id 1)
+    ;   (future  (create-topic)))
   ))
 
 ;        kafka "kafka_2.11-0.8.2.2"
@@ -132,11 +132,11 @@
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
-          (info "tearing down Zookeeper")
-          (db/teardown! zk test node)
-          (info "tearing down Kafka NUKE!!!" node)
-          (nuke!)
-          (info "Kafka NUKED!!!" node)
+          ;(info "tearing down Zookeeper")
+          ;(db/teardown! zk test node)
+          ;(info "tearing down Kafka NUKE!!!" node)
+          ;(nuke!)
+          ;(info "Kafka NUKED!!!" node)
           ))))
 
 (defn test-setup-all []
@@ -197,6 +197,7 @@
                  ;consumer (consumer node)
                  ;messages (consumer/messages consumer queue)
                  client {:producer producer :consumer nil :node node :messages nil}]
+            (if (= node :n1) (create-topic))
             (info "done client setup..." node)
             (assoc this :client client)))
 
