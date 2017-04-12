@@ -33,7 +33,7 @@
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic jepsen ")))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic jepsen ")))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -156,11 +156,16 @@
                           "auto.offset.reset"   "smallest"
                           "auto.commit.enable"  "true"}))
 
-(defn dequeue-only! [node queue]
-      (ckafka/with-resource
-        [consumer (consumer node)]
-        consumer/shutdown
-        (dequeue-messages! (consumer/messages consumer queue))))
+(defn dequeue-only! [op node queue]
+  (ckafka/with-resource
+    [consumer (consumer node)]
+    consumer/shutdown
+    (timeout 10000 (assoc op :type :fail :value :timeout)
+             (let [value (dequeue-messages! (consumer/messages consumer queue))]
+               (if (nil? value)
+                 (assoc op :type :fail :value :exhausted)
+                 (assoc op :type :ok :value value))))
+    ))
 
 (defn drain!
       "Returns a sequence of all elements available within dt millis."
@@ -187,11 +192,9 @@
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
   [client queue op]
-  (timeout 5000 (assoc op :type :fail :value :timeout)
-           (let [value (dequeue-only! (:node client) queue)]
-                (if (nil? value)
-                  (assoc op :type :fail :value :exhausted)
-                  (assoc op :type :ok :value value)))))
+  (timeout 60000
+           (assoc op :type :fail :value :timeout)
+           (dequeue-only! op (:node client) queue)))
 
 (defn producer [node]
       (producer/producer {"metadata.broker.list" (str (name node) ":9092")
@@ -218,11 +221,11 @@
                  ;            first)
                  a0 (info "brokers:" brokers)
                  a1 (info "starting client producer." node)
-                 producer (producer node)
+                 ;producer (producer node)
                  ;a2 (info "starting client consumer" node)
                  ;consumer (consumer node)
                  ;messages (consumer/messages consumer queue)
-                 client {:producer producer :consumer nil :node node :messages nil}]
+                 client {:producer nil :consumer nil :node node :messages nil}]
             (info "done client setup..." node)
             (assoc this :client client)))
 
@@ -236,7 +239,7 @@
                     (enqueue-only! (:node client) queue (:value op))
                     (assoc op :type :ok))
          :dequeue  (dequeue! client queue op)
-         :drain  (timeout 10000 (assoc op :type :info :value :timeout)
+         :drain  (timeout 60000 (assoc op :type :info :value :timeout)
                                            (loop []
                                              (let [op' (->> (assoc op
                                                                    :f    :dequeue
