@@ -29,11 +29,13 @@
              [jepsen.os.debian :as debian])
   )
 
+(def topic "jepsen3")
+
 (defn create-topic
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic jepsen ")))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic)))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -157,15 +159,19 @@
                           "auto.commit.enable"  "true"}))
 
 (defn dequeue-only! [op node queue]
-  (ckafka/with-resource
-    [consumer (consumer node)]
-    consumer/shutdown
-    (timeout 10000 (assoc op :type :fail :value :timeout)
-             (let [value (dequeue-messages! (consumer/messages consumer queue))]
-               (if (nil? value)
-                 (assoc op :type :fail :value :exhausted)
-                 (assoc op :type :ok :value value))))
-    ))
+  (try
+    (ckafka/with-resource
+      [consumer (consumer node)]
+      consumer/shutdown
+      (timeout 10000 (assoc op :type :fail :value :timeout)
+               (let [value (dequeue-messages! (consumer/messages consumer queue))]
+                    (if (nil? value)
+                      (assoc op :type :fail :value :exhausted)
+                      (assoc op :type :ok :value value))))
+      )
+  (catch Exception e
+    ; Exception is probably timeout variant
+    (assoc op :type :fail :value :timeout))))
 
 (defn drain!
       "Returns a sequence of all elements available within dt millis."
@@ -212,6 +218,14 @@
 (defn brokers [node]
       (czk/brokers {"zookeeper.connect" (str (name node) ":2181")}))
 
+(defn enqueue! [client queue op]
+  (try
+    (timeout 10000  (assoc op :type :info, :value :timeout)
+             (enqueue-only! (:node client) queue (:value op))
+             (assoc op :type :ok))
+    (catch Exception e
+      (assoc op :type :info, :value :timeout))))
+
 (defrecord Client [client queue]
   client/Client
   (setup!  [this test node]
@@ -235,9 +249,7 @@
 
   (invoke!  [this test op]
      (case  (:f op)
-         :enqueue (timeout 10000  (assoc op :type :info, :error :timeout)
-                    (enqueue-only! (:node client) queue (:value op))
-                    (assoc op :type :ok))
+         :enqueue (enqueue! client queue op)
          :dequeue  (dequeue! client queue op)
          :drain  (timeout 60000 (assoc op :type :info :value :timeout)
                                            (loop []
@@ -261,7 +273,7 @@
          ))
   )
 
-(defn client [] (Client. nil "jepsen"))
+(defn client [] (Client. nil topic))
 
 ; Generators
 
