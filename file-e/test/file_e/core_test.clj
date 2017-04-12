@@ -11,21 +11,21 @@
             [knossos.model :refer [cas-register, multi-register]])
   (:use     clojure.tools.logging))
 
-(deftest file-noop-test
+(deftest file-nemesis-test
   (info "noop test\n")
   (let [test (assoc tests/noop-test
                :nodes [:n1 :n2 :n3]
-               :name "file-noop-test"
+               :name "file-nemesis-test"
                :client (client-nfs nil)
-               :nemesis (noop-nemesis)
+               :nemesis (nemesis-test-3)
                :generator (->> (gen/mix [r w cas])
                                (gen/stagger 1)
                                (gen/nemesis
-                                 (gen/seq (cycle [(gen/sleep 2)
+                                 (gen/seq (cycle [(gen/sleep 5)
                                                   {:type :info, :f :start}
-                                                  (gen/sleep 2)
+                                                  (gen/sleep 9)
                                                   {:type :info, :f :stop}])))
-                               (gen/time-limit 10))
+                               (gen/time-limit 30))
                :model (cas-register 0)
                :checker (checker/compose
                           {:perf   (checker/perf)
