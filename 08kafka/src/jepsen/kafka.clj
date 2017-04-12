@@ -29,11 +29,14 @@
              [jepsen.os.debian :as debian])
   )
 
+(def topic "jepsen3")
+
 (defn create-topic
   []
-  (Thread/sleep 20)
+  ;(Thread/sleep 20)
   (info "creating topic")
-  (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic jepsen "))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic)))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
 
@@ -45,6 +48,7 @@
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
        (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties")))
+       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
 )
@@ -66,7 +70,6 @@
 
 (defn nuke!
   []
-  ;(zk/nuke)
   (stop! )
   (c/su
     (stop!)
@@ -76,11 +79,13 @@
 (defn set-broker-id! [filename id]
    (c/exec  (c/lit  (format "sed -i.bak '/^broker\\.id/s/^.*$/broker.id=%s/' %s"     id filename))))
 
-
 (defn deploy [id node version]
   (let [filename "/opt/kafka/config/server.properties"]
     ; (info "deploy calls set-broker-id!" filename node id )
-    (set-broker-id! filename id))
+    (set-broker-id! filename id)
+    ; set advertised host name, otherwise it is canonical name
+    ;(info "setting advertised host name to" (name node))
+    ;(c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
     ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deplpoy start! begins" id )
     (start! id)
@@ -88,24 +93,25 @@
     ; Create topic asynchronously
     (when (= id 1)
        (future  (create-topic)))
-)
+  ))
 
 ;        kafka "kafka_2.11-0.8.2.2"
 
 ;        kafka "kafka_2.10-0.8.2.1"
+;2.10-0.8.2.1
 
 (defn install! [node version]
    ; Install specific versions
   (info "install! Kafka begins" node )
   (let [id  (Integer.  (re-find #"\d+", (name node)))
-        kafka "kafka_2.11-0.8.2.2"]
+        kafka "kafka_2.10-0.8.2.1"]
     (c/exec :apt-get :update)
     (c/exec :apt-get :install :-y :--force-yes "default-jre")
     (c/exec :apt-get :install :-y :--force-yes "wget")
     (c/exec :rm :-rf "/opt/")
     (c/exec :mkdir :-p "/opt/")
     (c/cd "/opt/"
-          (c/exec :wget (format "http://apache.claz.org/kafka/0.8.2.2/%s.tgz" kafka))
+          (c/exec :wget (format "http://apache.claz.org/kafka/0.8.2.1/%s.tgz" kafka))
           (c/exec :gzip :-d (format "%s.tgz" kafka))
           (c/exec :tar :xf (format "%s.tar" kafka))
           (c/exec :mv kafka "kafka")
@@ -119,7 +125,7 @@
 (defn db
     "Kafka DB for a particular version."
     [version]
-    (let [zk (zk/db "3.4.5+dfsg-2")]
+    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
       (reify db/DB
         (setup!  [_ test node]
           (info "setup! zk " node)
@@ -129,87 +135,145 @@
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
-          (info "tearing down Kafka NUKE!!!" node)
-          (nuke!)
-          (info "Kafka NUKED!!!" node)
+          ;(info "tearing down Zookeeper")
+          ;(db/teardown! zk test node)
+          ;(info "tearing down Kafka NUKE!!!" node)
+          ;(nuke!)
+          ;(info "Kafka NUKED!!!" node)
           ))))
 
+(defn test-setup-all []
+      (let [db (db "3.4.5+dfsg-2")
+            test tests/noop-test]
+           (doall (map #(c/on % (db/setup! db test %)) [:n1 :n2 :n3 :n4 :n5]))))
+
+(defn dequeue-messages! [messages]
+      (let [message (first messages)
+            value (if (nil? message) nil (codec/decode (:value message)))]
+           value))
+
+(defn consumer [node]
+      (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
+                          "group.id"            "jepsen.consumer"
+                          "auto.offset.reset"   "smallest"
+                          "auto.commit.enable"  "true"}))
+
+(defn dequeue-only! [op node queue]
+  (try
+    (ckafka/with-resource
+      [consumer (consumer node)]
+      consumer/shutdown
+      (timeout 10000 (assoc op :type :fail :value :timeout)
+               (let [value (dequeue-messages! (consumer/messages consumer queue))]
+                    (if (nil? value)
+                      (assoc op :type :fail :value :exhausted)
+                      (assoc op :type :ok :value value))))
+      )
+  (catch Exception e
+    ; Exception is probably timeout variant
+    (assoc op :type :fail :value :timeout))))
 
 (defn drain!
-    "Returns a sequence of all elements available within dt millis."
-    [ho topic dt op]
-    (timeout 10000  (assoc op :type :info, :error :timeout)
-       (ckafka/with-resource
-           [consumer (consumer/consumer
-               {"zookeeper.connect"   (str (:host (name ho)) ":2181")
-                                       "group.id"            "jepsen.consumer"
-                                       "auto.offset.reset"   "smallest"
-                                       "auto.commit.enable"  "true"})]
-                  consumer/shutdown
-                      (let  [done  (atom  [])]
-                              (loop  [coll  (consumer/messages consumer  [topic])]
-                                 (if  (-> done
-                                    (swap! conj  (first coll))
-                                           future
-                                           (deref dt ::timeout)
-                                           (= ::timeout))
-                                          @done
-                               (recur  (rest coll))))))))
+      "Returns a sequence of all elements available within dt millis."
+      [node queue]
+      (ckafka/with-resource
+        [consumer (consumer node)]
+        consumer/shutdown
+        (let [done (atom [])]
+             (loop [coll (consumer/messages consumer queue)]
+                   (if (-> done
+                           (swap! conj (first coll))
+                           future
+                           (deref 10000 ::timeout)
+                           (= ::timeout))
+                     @done
+                     (recur (rest coll)))))))
+
+(comment (defn drain! [node queue]
+      (ckafka/with-resource
+        [consumer (consumer node)]
+        (doall (consumer/messages consumer queue)))))
 
 (defn dequeue!
-    "Given a client and an :invoke :dequeue op, dequeues and acks a job."
-    [test node op]
-    (info "dequeue! called" )
-    (timeout 10000  (assoc op :type :info, :error :timeout)
-        (def config  {"zookeeper.connect" (str (name node) ":2182")
-                  "group.id" "clj-kafka.consumer"
-                  "auto.offset.reset" "smallest"
-                  "auto.commit.enable" "false"})
-        (ckafka/with-resource  [c  (consumer/consumer config)]
-              consumer/shutdown
-              (doall (take 2  (consumer/messages c "jepsen"))))
-  ))
+  "Given a channel and an operation, dequeues a value and returns the
+  corresponding operation."
+  [client queue op]
+  (timeout 60000
+           (assoc op :type :fail :value :timeout)
+           (dequeue-only! op (:node client) queue)))
 
+(defn producer [node]
+      (producer/producer {"metadata.broker.list" (str (name node) ":9092")
+                          "request.required.acks" "-1" ; all in-sync brokers
+                          "producer.type"         "sync"
+                          ;"message.send.max_retries" "1"
+                          ;"connect.timeout.ms"    "1000"
+                          "retry.backoff.ms"       "1000"
+                          "serializer.class" "kafka.serializer.DefaultEncoder"
+                          "partitioner.class" "kafka.producer.DefaultPartitioner"}))
 
-(defrecord Client [nd enqueued]
+(defn enqueue-only! [node queue value]
+      (producer/send-message (producer node) (producer/message queue (codec/encode value))))
+
+(defn brokers [node]
+      (czk/brokers {"zookeeper.connect" (str (name node) ":2181")}))
+
+(defn enqueue! [client queue op]
+  (try
+    (timeout 10000  (assoc op :type :info, :value :timeout)
+             (enqueue-only! (:node client) queue (:value op))
+             (assoc op :type :ok))
+    (catch Exception e
+      (assoc op :type :info, :value :timeout))))
+
+(defrecord Client [client queue]
   client/Client
-  (setup!  [_ test node]
+  (setup!  [this test node]
            (info "setup! client called" node)
+           (let [brokers (->> (brokers node)
+                             (filter #(= (:host %) (name node))))
+                 ;            first)
+                 a0 (info "brokers:" brokers)
+                 a1 (info "starting client producer." node)
+                 ;producer (producer node)
+                 ;a2 (info "starting client consumer" node)
+                 ;consumer (consumer node)
+                 ;messages (consumer/messages consumer queue)
+                 client {:producer nil :consumer nil :node node :messages nil}]
+            (info "done client setup..." node)
+            (assoc this :client client)))
 
-           (let [
-                 enqueued (atom 0)
-                 ]
-             (info "client setup! setup node " )
-
-             ; Return Client
-             (Client. node enqueued)))
-
-  (teardown!  [_ test])
+  (teardown!  [_ test]
+    ;(consumer/shutdown (:consumer client))
+    )
 
   (invoke!  [this test op]
      (case  (:f op)
-         :enqueue  (
-             (timeout 10000  (assoc op :type :info, :error :timeout)
-                 (def p  (producer/producer  {"metadata.broker.list" (str (name nd) ":9092")
-                                              "request.required.acks" "-1" ; all in-sync brokers
-                                              "producer.type"         "sync"
-                                              "message.send.max_retries" "1"
-                                              "connect.timeout.ms"    "1000"
-                                              "retry.backoff.ms"       "1000"
-                                              "serializer.class" "kafka.serializer.DefaultEncoder"
-                                              "partitioner.class" "kafka.producer.DefaultPartitioner"}))
+         :enqueue (enqueue! client queue op)
+         :dequeue  (dequeue! client queue op)
+         :drain  (timeout 60000 (assoc op :type :info :value :timeout)
+                                           (loop []
+                                             (let [op' (->> (assoc op
+                                                                   :f    :dequeue
+                                                                   :time (relative-time-nanos))
+                                                            util/log-op
+                                                            (jepsen/conj-op! test)
+                                                            (dequeue! client queue))]
+                                               ; Log completion
+                                               (->> (assoc op' :time (relative-time-nanos))
+                                                    util/log-op
+                                                    (jepsen/conj-op! test))
 
-                      (producer/send-message p  (producer/message "jepsen"  (.getBytes (str (:value op)))))
-              )
-              (assoc op :type :ok)
+                                               (if (= :fail (:type op'))
+                                                 ; Done
+                                                 (assoc op :type :ok, :value :exhausted)
 
-                      )
-         :dequeue  (dequeue! test nd op)
-         :drain  (drain! nd "jepsen" 1000 op)
+                                                 ; Keep going.
+                                                 (recur)))))
          ))
   )
 
-(defn client [] (Client. nil 0))
+(defn client [] (Client. nil topic))
 
 ; Generators
 
@@ -243,6 +307,7 @@
              :db  (db version)
              :client  (client)
              :model   (model/unordered-queue)
+             ;:nemesis (nemesis/partition-random-halves)
              :checker    (checker/compose
                             {:queue       checker/queue
                             :total-queue checker/total-queue})

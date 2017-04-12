@@ -133,7 +133,7 @@
 (defn db
     "Kafka DB for a particular version."
     [version]
-    (let [zk (zk/db "3.4.5+dfsg-2")]
+    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
       (reify db/DB
         (setup!  [_ test node]
           (info "setup! zk " node)
@@ -232,6 +232,15 @@
 
 (defn client [] (Client. nil nil))
 
+; Nemeses
+
+(defn killer
+  "Kills a random node on start, restarts it on stop."
+  []
+  (nemesis/node-start-stopper
+    rand-nth
+    (fn start [test node] (stop! node))
+    (fn stop  [test node] (start! node test))))
 
 ; Generators
 
@@ -258,14 +267,46 @@
                                             :f    :drain})))))
 
 
-(defn kafka-test
+(comment (defn kafka-test
     [version]
       (assoc  tests/noop-test
              :os debian/os
              :db  (db version)
              :client  (client)
+             :nemesis    (nemesis/partition-random-halves)
              :model   (model/unordered-queue)
+             :checker    (checker/compose
+                           {:queue       checker/queue
+                            :total-queue checker/total-queue})
              :generator  (->>  (gen/queue)
                                (gen/delay 1)
                                std-gen)
-      ))
+      )))
+
+(defn kafka-test
+  [name opts version]
+  (merge tests/noop-test
+         {:name    (str "kafka " name)
+          :client  (client)
+          :os      debian/os
+          :db      (db version)
+          :model   (model/unordered-queue)
+          :generator (->> (gen/queue)
+                          (gen/delay 1)
+                          std-gen)
+          :checker (checker/compose {:queue       checker/total-queue
+                                     :latency     (checker/latency-graph)})}
+         opts))
+
+(defn single-node-restarts-test
+  [version]
+  (kafka-test "single node restarts"
+               {:nemesis   (killer)}
+               version))
+
+(defn partitions-test
+  [version]
+  (kafka-test "partitions"
+               {:nemesis (nemesis/partition-random-halves)}
+               version))
+
