@@ -299,6 +299,31 @@
        (gen/clients  (gen/each  (gen/once  {:type :invoke
                                             :f    :drain})))))
 
+(def gen1
+  (->>  (gen/queue)
+        (gen/delay 1)
+        std-gen))
+
+(def gen2
+  (gen/phases
+    (->> (gen/queue)
+         (gen/delay 1/10)
+         (gen/nemesis
+           (gen/seq
+             (cycle [(gen/sleep 60)
+                     {:type :info :f :start}
+                     (gen/sleep 60)
+                     {:type :info :f :stop}])))
+         (gen/time-limit 360))
+    (gen/nemesis
+      (gen/once {:type :info, :f :stop}))
+    (gen/log "waiting for recovery")
+    (gen/sleep 60)
+    (gen/clients
+      (gen/each
+        (gen/once {:type :invoke
+                   :f    :drain})))))
+
 
 (defn kafka-test
     [version]
@@ -311,7 +336,5 @@
              :checker    (checker/compose
                             {:queue       checker/queue
                             :total-queue checker/total-queue})
-             :generator  (->>  (gen/queue)
-                               (gen/delay 1)
-                               std-gen)
+             :generator  gen2
       ))
