@@ -53,8 +53,8 @@ cat <<EOF > /etc/hosts
 ::1     localhost ip6-localhost ip6-loopback
 $MG_IP mgmt $MG_ID
 $M1_IP mon-node1 $M1_ID
-$M1_IP mon-node2 $M1_ID
-$M2_IP mon-node3 $M2_ID
+$M2_IP mon-node2 $M2_ID
+$M3_IP mon-node3 $M3_ID
 $O1_IP osd-node1 $O1_ID
 $O2_IP osd-node2 $O2_ID
 $O3_IP osd-node3 $O3_ID
