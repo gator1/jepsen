@@ -1,13 +1,21 @@
 (ns jepsen.kafka
-  (use kafka-clj.client :reload)
   (:require  [clojure.tools.logging :refer :all]
              [clojure.java.io :as io]
              [clojure.string     :as str]
-             [clj-kafka.consumer.zk  :as consumer]
-             [clj-kafka.producer     :as producer]
-             [clj-kafka.new.producer :as nproducer]
-             [clj-kafka.zk           :as czk]
-             [clj-kafka.core         :as ckafka]
+             [franzy.clients.consumer.protocols :refer :all]
+             [franzy.clients.producer.protocols :refer :all]
+             [franzy.clients.consumer.client :as consumer]
+             [franzy.clients.producer.client :as producer]
+             [franzy.clients.producer.defaults :as pd]
+             [franzy.clients.consumer.defaults :as cd]
+             [franzy.serialization.serializers :as serializers]
+             [franzy.serialization.nippy.deserializers :as nippy-deserializers]
+             [franzy.serialization.deserializers :as deserializers]
+             ;[clj-kafka.consumer.zk  :as consumer]
+             ;[clj-kafka.producer     :as producer]
+             ;[clj-kafka.new.producer :as nproducer]
+             ;[clj-kafka.zk           :as czk]
+             ;[clj-kafka.core         :as ckafka]
              [jepsen  [db    :as db]
                       [core  :as jepsen]
                       [client  :as client]
@@ -19,6 +27,7 @@
                       [store     :as store]
                       [nemesis   :as nemesis]
                       [report    :as report]
+                      [codec     :as codec]
                       [util      :as util :refer  [meh
                                                    timeout
                                                    relative-time-nanos]]
@@ -26,16 +35,17 @@
              [jepsen.control :as c :refer  [|]]
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
-             [jepsen.os.debian :as debian]))
+             [jepsen.os.debian :as debian])
+  )
 
-(use 'kafka-clj.client :reload)
-(use 'kafka-clj.consumer.node :reload)
+(def topic "jepsen3")
 
 (defn create-topic
   []
-  (Thread/sleep 20)
+  ;(Thread/sleep 20)
   (info "creating topic")
-  (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic jepsen "))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic)))
+  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
 
@@ -47,6 +57,7 @@
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
        (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties")))
+       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
 )
@@ -68,58 +79,49 @@
 
 (defn nuke!
   []
-  ;(zk/nuke)
   (stop! )
   (c/su
     (stop!)
     (c/exec :rm :-rf "/opt/kafka")
     (c/exec :rm :-rf "/tmp/kafka-logs")))
 
-(comment
-  (defn set-broker-id!  [filename id]
-    (info "set-broker-id!: filename: " filename)
-    (let [transform #(if  (clojure.string/starts-with? %1 "broker.id")  (str "broker.id=" id) %1)
-          joined (clojure.string/join "\n" (map transform (-> filename slurp clojure.string/split-lines)))]
-      (info "joined: " joined)
-      (spit filename joined))))
-
 (defn set-broker-id! [filename id]
    (c/exec  (c/lit  (format "sed -i.bak '/^broker\\.id/s/^.*$/broker.id=%s/' %s"     id filename))))
-
-(comment
-  (defn set-broker-id!  [filename id]
-    (c/exec :rm :-rf filename)
-    (c/exec :echo
-            (-> "server.properties"
-                io/resource
-                slurp
-                (str/replace "%%ID%%"  (str id))) :> "/opt/kafka/config/server.properties")))
 
 (defn deploy [id node version]
   (let [filename "/opt/kafka/config/server.properties"]
     ; (info "deploy calls set-broker-id!" filename node id )
-    (set-broker-id! filename id))
+    (set-broker-id! filename id)
+    ; set advertised host name, otherwise it is canonical name
+    ;(info "setting advertised host name to" (name node))
+    ;(c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
     ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deplpoy start! begins" id )
     (start! id)
     (info "deplpoy start! ends!" id )
     ; Create topic asynchronously
-    (when (= id 1)
-       (future  (create-topic)))
-)
+    ;(when (= id 1)
+    ;   (future  (create-topic)))
+  ))
+
+;        kafka "kafka_2.11-0.8.2.2"
+
+;        kafka "kafka_2.10-0.8.2.1"
+;2.10-0.8.2.1
 
 (defn install! [node version]
    ; Install specific versions
   (info "install! Kafka begins" node )
+  ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
   (let [id  (Integer.  (re-find #"\d+", (name node)))
-        kafka "kafka_2.10-0.10.0.1"]
+        kafka "kafka_2.12-0.10.2.0"]
     (c/exec :apt-get :update)
     (c/exec :apt-get :install :-y :--force-yes "default-jre")
     (c/exec :apt-get :install :-y :--force-yes "wget")
     (c/exec :rm :-rf "/opt/")
     (c/exec :mkdir :-p "/opt/")
     (c/cd "/opt/"
-          (c/exec :wget (format "http://apache.claz.org/kafka/0.10.0.1/%s.tgz" kafka))
+          (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka))
           (c/exec :gzip :-d (format "%s.tgz" kafka))
           (c/exec :tar :xf (format "%s.tar" kafka))
           (c/exec :mv kafka "kafka")
@@ -143,104 +145,193 @@
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
-          (info "tearing down Kafka NUKE!!!" node)
-          (nuke!)
-          (info "Kafka NUKED!!!" node)
+          ;(info "tearing down Zookeeper")
+          ;(db/teardown! zk test node)
+          ;(info "tearing down Kafka NUKE!!!" node)
+          ;(nuke!)
+          ;(info "Kafka NUKED!!!" node)
           ))))
 
-(comment  broker  (->>  (zk/brokers {"zookeeper.connect"  (str  (:host opts) ":2181")})
-                    (filter #(=  (:host %)  (:host node)))
-                    first))
-(comment
-                 producer  (producer/producer
-                                {"metadata.broker.list"  (str  (:host node) ":9092")
-                                 "request.required.acks" "-1" ; all in-sync brokers
-                                 "producer.type"         "sync"
-                                 "message.send.max_retries" "1"
-                                 "connect.timeout.ms"    "1000"
-                                 "retry.backoff.ms"       "1000"
-                                 "serializer.class"     "kafka.serializer.DefaultEncoder"
-                                 "partitioner.class"    "kafka.producer.DefaultPartitioner"}))
+(defn test-setup-all []
+      (let [db (db "3.4.5+dfsg-2")
+            test tests/noop-test]
+           (doall (map #(c/on % (db/setup! db test %)) [:n1 :n2 :n3 :n4 :n5]))))
 
+(comment (defn dequeue-messages! [messages]
+      (let [message (first messages)
+            value (if (nil? message) nil (codec/decode (:value message)))]
+           value))
 
-(defn drain!
-    "Returns a sequence of all elements available within dt millis."
-    [ho topic dt op]
-    (timeout 10000  (assoc op :type :info, :error :timeout)
-       (ckafka/with-resource
-           [consumer (consumer/consumer
-               {"zookeeper.connect"   (str (:host (name ho)) ":2181")
-                                       "group.id"            "jepsen.consumer"
-                                       "auto.offset.reset"   "smallest"
-                                       "auto.commit.enable"  "true"})]
-                  consumer/shutdown
-                      (let  [done  (atom  [])]
-                              (loop  [coll  (consumer/messages consumer  [topic])]
-                                 (if  (-> done
-                                    (swap! conj  (first coll))
-                                           future
-                                           (deref dt ::timeout)
-                                           (= ::timeout))
-                                          @done
-                               (recur  (rest coll))))))))
+(defn consumer [node]
+      (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
+                          "group.id"            "jepsen.consumer"
+                          "auto.offset.reset"   "smallest"
+                          "auto.commit.enable"  "true"}))
+
+(defn dequeue-only! [op node queue]
+  (try
+    (ckafka/with-resource
+      [consumer (consumer node)]
+      consumer/shutdown
+      (timeout 10000 (assoc op :type :fail :value :timeout)
+               (let [value (dequeue-messages! (consumer/messages consumer queue))]
+                    (if (nil? value)
+                      (assoc op :type :fail :value :exhausted)
+                      (assoc op :type :ok :value value))))
+      )
+  (catch Exception e
+    ; Exception is probably timeout variant
+    (assoc op :type :fail :value :timeout)))))
+
+(defn consumer [node]
+  (let [cc {:bootstrap.servers       [(str (name node) ":9092")]
+            :group.id                "jepsen.client"
+            :auto.offset.reset       :smallest
+            ;;here we turn on committing offsets to Kafka itself, every 1000 ms
+            :enable.auto.commit      true
+            :auto.commit.interval.ms 1000}
+        key-deserializer (deserializers/keyword-deserializer)
+        value-deserializer (nippy-deserializers/nippy-deserializer)
+        options (cd/make-default-consumer-options {:poll-timeout-ms 10000})]
+   (consumer/make-consumer cc key-deserializer value-deserializer options)))
+
+(defn dequeue-only! [op node queue]
+  (try
+    (with-open [c (consumer node)]
+      (subscribe-to-partitions! c [queue])
+      (println "Partitions subscribed to:" (partition-subscriptions c))
+      (let [cr (poll! c)
+            message (first cr)
+            value (:value message)]
+          (clear-subscriptions! c)
+          (if (nil? message)
+            (assoc op :type :fail :value :exhausted)
+            (assoc op :type :ok :value value)))
+      )
+    (catch Exception e
+      ; Exception is probably timeout variant
+      (assoc op :type :fail :value :timeout))))
+
+(comment (defn drain!
+      "Returns a sequence of all elements available within dt millis."
+      [node queue]
+      (ckafka/with-resource
+        [consumer (consumer node)]
+        consumer/shutdown
+        (let [done (atom [])]
+             (loop [coll (consumer/messages consumer queue)]
+                   (if (-> done
+                           (swap! conj (first coll))
+                           future
+                           (deref 10000 ::timeout)
+                           (= ::timeout))
+                     @done
+                     (recur (rest coll))))))))
+
+(comment (defn drain! [node queue]
+      (ckafka/with-resource
+        [consumer (consumer node)]
+        (doall (consumer/messages consumer queue)))))
 
 (defn dequeue!
-    "Given a client and an :invoke :dequeue op, dequeues and acks a job."
-    [test node op]
-    (info "dequeue! called" )
-    (timeout 10000  (assoc op :type :info, :error :timeout)
-        (def config  {"zookeeper.connect" (str (name node) ":2182")
-                  "group.id" "clj-kafka.consumer"
-                  "auto.offset.reset" "smallest"
-                  "auto.commit.enable" "false"})
-        (ckafka/with-resource  [c  (consumer/consumer config)]
-              consumer/shutdown
-              (doall (take 2  (consumer/messages c "jepsen"))))
-  ))
+  "Given a channel and an operation, dequeues a value and returns the
+  corresponding operation."
+  [client queue op]
+  (timeout 60000
+           (assoc op :type :fail :value :timeout)
+           (dequeue-only! op (:node client) queue)))
 
+(defn enqueue-only! [node queue value]
+      (let [;;notice vs the string producer example, we're going with much simpler defaults to demonstrate you don't need all that ceremony
+            pc {:bootstrap.servers [(str (name node) ":9092")]
+                :acks              "all"
+                :retry.backoff.ms   1000
+                ;;Best Practice: Set a client-id for better auditing, easier admin operations, etc.
+                :client.id         "jepsen.client"}
+            ;;now we are using a keyword serializer for keys, so we can use Clojure keywords as keys if we want
+            key-serializer (serializers/keyword-serializer)
+            ;;now we are using the EDN serializer so we should be able to send full Clojure objects that are EDN-serializable
+            value-serializer (serializers/edn-serializer)
+            ;;we're being lazy, but we could set some options instead of using the defaults, or not even pass options at all
+            options (pd/make-default-producer-options)
+            partition 0]
+           ;;this producer is created without passing options, if you have no need....
+           (with-open [p (producer/make-producer pc key-serializer value-serializer)]
+                            ;;we can also send without options and also pass everything as 1 map if we choose - this time we send clj values
+                            (send-sync! p queue 0 nil value options))))
 
-(defrecord Client [nd conn]
+(comment (defn producer [node]
+      (producer/producer {"metadata.broker.list" (str (name node) ":9092")
+                          "request.required.acks" "-1" ; all in-sync brokers
+                          "producer.type"         "sync"
+                          ;"message.send.max_retries" "1"
+                          ;"connect.timeout.ms"    "1000"
+                          "retry.backoff.ms"       "1000"
+                          "serializer.class" "kafka.serializer.DefaultEncoder"
+                          "partitioner.class" "kafka.producer.DefaultPartitioner"})))
+
+(comment (defn enqueue-only! [node queue value]
+      (producer/send-message (producer node) (producer/message queue (codec/encode value)))))
+
+(comment (defn brokers [node]
+      (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})))
+
+(defn enqueue! [client queue op]
+  (try
+    (timeout 10000  (assoc op :type :info, :value :timeout)
+             (enqueue-only! (:node client) queue (:value op))
+             (assoc op :type :ok))
+    (catch Exception e
+      (assoc op :type :info, :value :timeout))))
+
+(defrecord Client [client queue]
   client/Client
-  (setup!  [_ test node]
-           (let [
-                 ; c  (create-connector  [{:host (name node ) :port 9092}]  {:flush-on-write true})
-                 ]
-             ; Return Client
-             (Client. node nil)))
+  (setup!  [this test node]
+           (info "setup! client called" node)
+           (let [;brokers (->> (brokers node)
+                 ;            (filter #(= (:host %) (name node))))
+                 ;            first)
+                 ;a0 (info "brokers:" brokers)
+                 ;a1 (info "starting client producer." node)
+                 ;producer (producer node)
+                 ;a2 (info "starting client consumer" node)
+                 ;consumer (consumer node)
+                 ;messages (consumer/messages consumer queue)
+                 client {:producer nil :consumer nil :node node :messages nil}]
+            (info "done client setup..." node)
+            (assoc this :client client)))
 
-  (teardown!  [_ test])
+  (teardown!  [_ test]
+    ;(consumer/shutdown (:consumer client))
+    )
 
   (invoke!  [this test op]
      (case  (:f op)
-         :enqueue  (
-              (if (= nil  conn)
-                 (def c  (create-connector  [{:host (name nd ) :port 9092}]  {:flush-on-write true}))
-                 (def c conn))
-             ;(def msg1kb  (.getBytes  (clojure.string/join ","  (range 278))))
-             (timeout 10000  (assoc op :type :info, :error :timeout)
+         :enqueue (enqueue! client queue op)
+         :dequeue  (dequeue! client queue op)
+         :drain  (timeout 60000 (assoc op :type :info :value :timeout)
+                                           (loop []
+                                             (let [op' (->> (assoc op
+                                                                   :f    :dequeue
+                                                                   :time (relative-time-nanos))
+                                                            util/log-op
+                                                            (jepsen/conj-op! test)
+                                                            (dequeue! client queue))]
+                                               ; Log completion
+                                               (->> (assoc op' :time (relative-time-nanos))
+                                                    util/log-op
+                                                    (jepsen/conj-op! test))
 
-                 (time  (doseq  [i  (range 100000)]  (send-msg c "jepsen" (.getBytes (str (:value op))))))
-                    )
-              (assoc op :type :ok)
-              (Client. nd c)
+                                               (if (= :fail (:type op'))
+                                                 ; Done
+                                                 (assoc op :type :ok, :value :exhausted)
 
-                      )
-         :dequeue  (dequeue! test nd op)
-         :drain  (drain! nd "jepsen" 1000 op)
+                                                 ; Keep going.
+                                                 (recur)))))
          ))
   )
 
-(defn client [] (Client. nil nil))
-
-; Nemeses
-
-(defn killer
-  "Kills a random node on start, restarts it on stop."
-  []
-  (nemesis/node-start-stopper
-    rand-nth
-    (fn start [test node] (stop! node))
-    (fn stop  [test node] (start! node test))))
+(defn client [] (Client. nil topic))
 
 ; Generators
 
@@ -266,47 +357,42 @@
        (gen/clients  (gen/each  (gen/once  {:type :invoke
                                             :f    :drain})))))
 
+(def gen1
+  (->>  (gen/queue)
+        (gen/delay 1)
+        std-gen))
 
-(comment (defn kafka-test
+(def gen2
+  (gen/phases
+    (->> (gen/queue)
+         (gen/delay 1/10)
+         (gen/nemesis
+           (gen/seq
+             (cycle [(gen/sleep 60)
+                     {:type :info :f :start}
+                     (gen/sleep 60)
+                     {:type :info :f :stop}])))
+         (gen/time-limit 360))
+    (gen/nemesis
+      (gen/once {:type :info, :f :stop}))
+    (gen/log "waiting for recovery")
+    (gen/sleep 60)
+    (gen/clients
+      (gen/each
+        (gen/once {:type :invoke
+                   :f    :drain})))))
+
+
+(defn kafka-test
     [version]
       (assoc  tests/noop-test
              :os debian/os
              :db  (db version)
              :client  (client)
-             :nemesis    (nemesis/partition-random-halves)
              :model   (model/unordered-queue)
+             ;:nemesis (nemesis/partition-random-halves)
              :checker    (checker/compose
-                           {:queue       checker/queue
+                            {:queue       checker/queue
                             :total-queue checker/total-queue})
-             :generator  (->>  (gen/queue)
-                               (gen/delay 1)
-                               std-gen)
-      )))
-
-(defn kafka-test
-  [name opts version]
-  (merge tests/noop-test
-         {:name    (str "kafka " name)
-          :client  (client)
-          :os      debian/os
-          :db      (db version)
-          :model   (model/unordered-queue)
-          :generator (->> (gen/queue)
-                          (gen/delay 1)
-                          std-gen)
-          :checker (checker/compose {:queue       checker/total-queue
-                                     :latency     (checker/latency-graph)})}
-         opts))
-
-(defn single-node-restarts-test
-  [version]
-  (kafka-test "single node restarts"
-               {:nemesis   (killer)}
-               version))
-
-(defn partitions-test
-  [version]
-  (kafka-test "partitions"
-               {:nemesis (nemesis/partition-random-halves)}
-               version))
-
+             :generator  gen2
+      ))
