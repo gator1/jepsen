@@ -38,7 +38,7 @@
              [jepsen.os.debian :as debian])
   )
 
-(def topic "jepsen3")
+(def topic "jepsen")
 
 (defn create-topic
   []
@@ -166,7 +166,7 @@
 (defn consumer [node]
       (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
                           "group.id"            "jepsen.consumer"
-                          "auto.offset.reset"   "smallest"
+                          "auto.offset.reset"   "latest"
                           "auto.commit.enable"  "true"}))
 
 (defn dequeue-only! [op node queue]
