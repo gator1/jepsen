@@ -187,7 +187,7 @@
 (defn consumer [node]
   (let [cc {:bootstrap.servers       [(str (name node) ":9092")]
             :group.id                "jepsen.client"
-            :auto.offset.reset       :smallest
+            :auto.offset.reset       :latest
             ;;here we turn on committing offsets to Kafka itself, every 1000 ms
             :enable.auto.commit      true
             :auto.commit.interval.ms 1000}
