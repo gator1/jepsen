@@ -44,7 +44,7 @@
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic)))
+  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic))))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -56,8 +56,8 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-       (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties")))
-       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
+      (info (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
+      ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
 )
@@ -96,9 +96,9 @@
     ;(info "setting advertised host name to" (name node))
     ;(c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
     ; (info "deplpoy set-broker-id done calls start!!" id )
-    (info "deplpoy start! begins" id )
+    (info "deploy start! begins" id )
     (start! id)
-    (info "deplpoy start! ends!" id )
+    (info "deploy start! ends!" id )
     ; Create topic asynchronously
     ;(when (= id 1)
     ;   (future  (create-topic)))
