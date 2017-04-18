@@ -116,7 +116,8 @@
   (let [id  (Integer.  (re-find #"\d+", (name node)))
         kafka "kafka_2.12-0.10.2.0"]
     (c/exec :apt-get :update)
-    (c/exec :apt-get :install :-y :--force-yes "default-jre")
+    (debian/install-jdk8!)
+    ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
     (c/exec :apt-get :install :-y :--force-yes "wget")
     (c/exec :rm :-rf "/opt/")
     (c/exec :mkdir :-p "/opt/")
