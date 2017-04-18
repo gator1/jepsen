@@ -1,3 +1,3 @@
-# Introduction to ostor-us
+# Introduction to uvs simulation
 
 TODO: write [great documentation](http://jacobian.org/writing/what-to-write/)
