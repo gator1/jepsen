@@ -2,15 +2,16 @@
   (:require  [clojure.tools.logging :refer :all]
              [clojure.java.io :as io]
              [clojure.string     :as str]
-             [franzy.clients.consumer.protocols :refer :all]
-             [franzy.clients.producer.protocols :refer :all]
-             [franzy.clients.consumer.client :as consumer]
-             [franzy.clients.producer.client :as producer]
-             [franzy.clients.producer.defaults :as pd]
-             [franzy.clients.consumer.defaults :as cd]
-             [franzy.serialization.serializers :as serializers]
-             [franzy.serialization.nippy.deserializers :as nippy-deserializers]
-             [franzy.serialization.deserializers :as deserializers]
+             [gregor.core :as gregor]
+             ;[franzy.clients.consumer.protocols :refer :all]
+             ;[franzy.clients.producer.protocols :refer :all]
+             ;[franzy.clients.consumer.client :as consumer]
+             ;[franzy.clients.producer.client :as producer]
+             ;[franzy.clients.producer.defaults :as pd]
+             ;[franzy.clients.consumer.defaults :as cd]
+             ;[franzy.serialization.serializers :as serializers]
+             ;[franzy.serialization.nippy.deserializers :as nippy-deserializers]
+             ;[franzy.serialization.deserializers :as deserializers]
              ;[clj-kafka.consumer.zk  :as consumer]
              ;[clj-kafka.producer     :as producer]
              ;[clj-kafka.new.producer :as nproducer]
@@ -114,7 +115,9 @@
   (info "install! Kafka begins" node )
   ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
   (let [id  (Integer.  (re-find #"\d+", (name node)))
-        kafka "kafka_2.12-0.10.2.0"]
+        kafka "kafka_2.11-0.10.0.1"
+        ;kafka "kafka_2.12-0.10.2.0"
+        ]
     (c/exec :apt-get :update)
     (debian/install-jdk8!)
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
@@ -122,7 +125,7 @@
     (c/exec :rm :-rf "/opt/")
     (c/exec :mkdir :-p "/opt/")
     (c/cd "/opt/"
-          (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka))
+          (c/exec :wget (format "http://apache.claz.org/kafka/0.10.0.1/%s.tgz" kafka))
           (c/exec :gzip :-d (format "%s.tgz" kafka))
           (c/exec :tar :xf (format "%s.tar" kafka))
           (c/exec :mv kafka "kafka")
@@ -166,7 +169,7 @@
 (defn consumer [node]
       (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
                           "group.id"            "jepsen.consumer"
-                          "auto.offset.reset"   "latest"
+                          "auto.offset.reset"   "earliest"
                           "auto.commit.enable"  "true"}))
 
 (defn dequeue-only! [op node queue]
@@ -182,12 +185,12 @@
       )
   (catch Exception e
     ; Exception is probably timeout variant
-    (assoc op :type :fail :value :timeout)))))
+    (assoc op :type :fail :value :timeout))))
 
 (defn consumer [node]
   (let [cc {:bootstrap.servers       [(str (name node) ":9092")]
-            :group.id                "jepsen.client"
-            :auto.offset.reset       :latest
+            :group.id                "jepsen.group"
+            :auto.offset.reset       :earliest
             ;;here we turn on committing offsets to Kafka itself, every 1000 ms
             :enable.auto.commit      true
             :auto.commit.interval.ms 1000}
@@ -211,7 +214,28 @@
       )
     (catch Exception e
       ; Exception is probably timeout variant
-      (assoc op :type :fail :value :timeout))))
+      (assoc op :type :fail :value :timeout)))))
+
+(defn consumer [node queue]
+      (gregor/consumer (str (name node) ":9092")
+                       "jepsen.consumer"
+                       [queue]
+                       {"auto.offset.reset" "earliest"
+                        "enable.auto.commit" "true"}))
+
+(defn dequeue-only! [op node queue]
+  (let [c (consumer node queue)]
+    (try
+      (let [cr (gregor/poll c)
+            message (first cr)
+            value (:value message)]
+           (if (nil? message)
+             (assoc op :type :fail :value :exhausted)
+             (assoc op :type :ok :value value)))
+     (catch Exception e
+       ; Exception is probably timeout variant
+       (assoc op :type :fail :value :timeout))
+     (finally (gregor/close c)))))
 
 (comment (defn drain!
       "Returns a sequence of all elements available within dt millis."
@@ -242,7 +266,7 @@
            (assoc op :type :fail :value :timeout)
            (dequeue-only! op (:node client) queue)))
 
-(defn enqueue-only! [node queue value]
+(comment (defn enqueue-only! [node queue value]
       (let [;;notice vs the string producer example, we're going with much simpler defaults to demonstrate you don't need all that ceremony
             pc {:bootstrap.servers [(str (name node) ":9092")]
                 :acks              "all"
@@ -259,7 +283,16 @@
            ;;this producer is created without passing options, if you have no need....
            (with-open [p (producer/make-producer pc key-serializer value-serializer)]
                             ;;we can also send without options and also pass everything as 1 map if we choose - this time we send clj values
-                            (send-sync! p queue 0 nil value options))))
+                            (send-sync! p queue 0 nil value options)))))
+
+(defn enqueue-only! [node queue value]
+  (let [p (gregor/producer (str (name node) ":9092") {:acks "all"
+                                                      :retry.backoff.ms 1000})]
+    (try
+      (deref (gregor/send p queue value))
+     (catch Exception e
+       nil)
+     (finally (gregor/close p)))))
 
 (comment (defn producer [node]
       (producer/producer {"metadata.broker.list" (str (name node) ":9092")
