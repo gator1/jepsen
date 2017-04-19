@@ -61,9 +61,12 @@
       (info node "tearing down ZK")
       (c/su
         (c/exec :service :zookeeper :stop)
+        ; Stop seems to fail.
+        (c/exec (c/lit  "ps aux | grep zookeeper | grep -v grep | awk '{ print $2 }' | xargs kill -s kill"))
         (c/exec :rm :-rf
                 (c/lit "/var/lib/zookeeper/version-*")
-                (c/lit "/var/log/zookeeper/*"))))
+                (c/lit "/var/log/zookeeper/*")
+                (c/lit "/etc/zookeeper/*"))))
 
     db/LogFiles
     (log-files [_ test node]

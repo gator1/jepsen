@@ -45,7 +45,7 @@
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic))))
+  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic " --config unclean.leader.election.enable=false --config min.insync.replicas=3"))))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -101,8 +101,8 @@
     (start! id)
     (info "deploy start! ends!" id )
     ; Create topic asynchronously
-    ;(when (= id 1)
-    ;   (future  (create-topic)))
+    (when (= id 1)
+       (future  (create-topic)))
   ))
 
 ;        kafka "kafka_2.11-0.8.2.2"
@@ -153,72 +153,17 @@
             (info "setup! kafka done"  node)
         ))
         (teardown!  [_ test node]
-          ;(info "tearing down Zookeeper")
-          ;(db/teardown! zk test node)
-          ;(info "tearing down Kafka NUKE!!!" node)
-          ;(nuke!)
-          ;(info "Kafka NUKED!!!" node)
+          (info "tearing down Kafka NUKE!!!" node)
+          (nuke!)
+          (info "Kafka NUKED!!!" node)
+          (info "tearing down Zookeeper")
+          (db/teardown! zk test node)
           ))))
 
 (defn test-setup-all []
       (let [db (db "3.4.5+dfsg-2")
             test tests/noop-test]
            (doall (map #(c/on % (db/setup! db test %)) [:n1 :n2 :n3 :n4 :n5]))))
-
-(comment (defn dequeue-messages! [messages]
-      (let [message (first messages)
-            value (if (nil? message) nil (codec/decode (:value message)))]
-           value))
-
-(defn consumer [node]
-      (consumer/consumer {"zookeeper.connect"  (str (name node) ":2181")
-                          "group.id"            "jepsen.consumer"
-                          "auto.offset.reset"   "earliest"
-                          "auto.commit.enable"  "true"}))
-
-(defn dequeue-only! [op node queue]
-  (try
-    (ckafka/with-resource
-      [consumer (consumer node)]
-      consumer/shutdown
-      (timeout 10000 (assoc op :type :fail :value :timeout)
-               (let [value (dequeue-messages! (consumer/messages consumer queue))]
-                    (if (nil? value)
-                      (assoc op :type :fail :value :exhausted)
-                      (assoc op :type :ok :value value))))
-      )
-  (catch Exception e
-    ; Exception is probably timeout variant
-    (assoc op :type :fail :value :timeout))))
-
-(defn consumer [node]
-  (let [cc {:bootstrap.servers       [(str (name node) ":9092")]
-            :group.id                "jepsen.group"
-            :auto.offset.reset       :earliest
-            ;;here we turn on committing offsets to Kafka itself, every 1000 ms
-            :enable.auto.commit      true
-            :auto.commit.interval.ms 1000}
-        key-deserializer (deserializers/keyword-deserializer)
-        value-deserializer (nippy-deserializers/nippy-deserializer)
-        options (cd/make-default-consumer-options {:poll-timeout-ms 10000})]
-   (consumer/make-consumer cc key-deserializer value-deserializer options)))
-
-(defn dequeue-only! [op node queue]
-  (try
-    (with-open [c (consumer node)]
-      (subscribe-to-partitions! c [queue])
-      (println "Partitions subscribed to:" (partition-subscriptions c))
-      (let [cr (poll! c)
-            message (first cr)
-            value (:value message)]
-          (clear-subscriptions! c)
-          (if (nil? message)
-            (assoc op :type :fail :value :exhausted)
-            (assoc op :type :ok :value value)))
-      )
-    (catch Exception e
-      ; Exception is probably timeout variant
-      (assoc op :type :fail :value :timeout)))))
 
 (defn consumer [node queue]
       (gregor/consumer (str (name node) ":9092")
@@ -241,7 +186,7 @@
 (defn dequeue-only! [op node queue]
   (let [c (consumer node queue)]
     (try
-      (let [cr (gregor/poll c)
+      (let [cr (gregor/poll c 5000)
             message (first cr)
             value (:value message)]
            (if (nil? message)
@@ -257,27 +202,6 @@
        (assoc op :type :fail :value :timeout))
      (finally (gregor/close c)))))
 
-(comment (defn drain!
-      "Returns a sequence of all elements available within dt millis."
-      [node queue]
-      (ckafka/with-resource
-        [consumer (consumer node)]
-        consumer/shutdown
-        (let [done (atom [])]
-             (loop [coll (consumer/messages consumer queue)]
-                   (if (-> done
-                           (swap! conj (first coll))
-                           future
-                           (deref 10000 ::timeout)
-                           (= ::timeout))
-                     @done
-                     (recur (rest coll))))))))
-
-(comment (defn drain! [node queue]
-      (ckafka/with-resource
-        [consumer (consumer node)]
-        (doall (consumer/messages consumer queue)))))
-
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
@@ -285,25 +209,6 @@
   (timeout 60000
            (assoc op :type :fail :value :timeout)
            (dequeue-only! op (:node client) queue)))
-
-(comment (defn enqueue-only! [node queue value]
-      (let [;;notice vs the string producer example, we're going with much simpler defaults to demonstrate you don't need all that ceremony
-            pc {:bootstrap.servers [(str (name node) ":9092")]
-                :acks              "all"
-                :retry.backoff.ms   1000
-                ;;Best Practice: Set a client-id for better auditing, easier admin operations, etc.
-                :client.id         "jepsen.client"}
-            ;;now we are using a keyword serializer for keys, so we can use Clojure keywords as keys if we want
-            key-serializer (serializers/keyword-serializer)
-            ;;now we are using the EDN serializer so we should be able to send full Clojure objects that are EDN-serializable
-            value-serializer (serializers/edn-serializer)
-            ;;we're being lazy, but we could set some options instead of using the defaults, or not even pass options at all
-            options (pd/make-default-producer-options)
-            partition 0]
-           ;;this producer is created without passing options, if you have no need....
-           (with-open [p (producer/make-producer pc key-serializer value-serializer)]
-                            ;;we can also send without options and also pass everything as 1 map if we choose - this time we send clj values
-                            (send-sync! p queue 0 nil value options)))))
 
 (defn enqueue-only! [node queue value]
   (let [p (gregor/producer (str (name node) ":9092") {"acks" "all"
@@ -315,22 +220,6 @@
      (catch Exception e
        nil)
      (finally (gregor/close p)))))
-
-(comment (defn producer [node]
-      (producer/producer {"metadata.broker.list" (str (name node) ":9092")
-                          "request.required.acks" "-1" ; all in-sync brokers
-                          "producer.type"         "sync"
-                          ;"message.send.max_retries" "1"
-                          ;"connect.timeout.ms"    "1000"
-                          "retry.backoff.ms"       "1000"
-                          "serializer.class" "kafka.serializer.DefaultEncoder"
-                          "partitioner.class" "kafka.producer.DefaultPartitioner"})))
-
-(comment (defn enqueue-only! [node queue value]
-      (producer/send-message (producer node) (producer/message queue (codec/encode value)))))
-
-(comment (defn brokers [node]
-      (czk/brokers {"zookeeper.connect" (str (name node) ":2181")})))
 
 (defn enqueue! [client queue op]
   (try
