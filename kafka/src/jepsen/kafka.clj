@@ -250,7 +250,7 @@
                ;(println "message:" message)
                (gregor/commit-offsets! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}])
                ; If this fails, we will throw an exception and return timeout.  That way we don't consume it.
-               (assoc op :type :ok :value value))))
+               (assoc op :type :ok :value (codec/decode value)))))
      (catch Exception e
        ;(pst e 25)
        ; Exception is probably timeout variant
@@ -450,5 +450,5 @@
              :checker    (checker/compose
                             {:queue       checker/queue
                             :total-queue checker/total-queue})
-             :generator  gen2
+             :generator  gen1
       ))
