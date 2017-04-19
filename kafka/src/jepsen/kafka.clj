@@ -126,7 +126,7 @@
      (info (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
           ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
-          (info (c/exec :wget (format "http://apache.claz.org/kafka/0.10.0.1/%s.tgz" kafka)))
+          (info (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka)))
           (info (c/exec :gzip :-d (format "%s.tgz" kafka)))
           (info (c/exec :tar :xf (format "%s.tar" kafka)))
           (info (c/exec :mv kafka "kafka"))
