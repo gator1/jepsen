@@ -335,7 +335,7 @@
              :db  (db version)
              :client  (client)
              :model   (model/unordered-queue)
-             ;:nemesis (nemesis/partition-random-halves)
+             :nemesis (nemesis/partition-random-halves)
              :checker    (checker/compose
                             {:queue       checker/queue
                             :total-queue checker/total-queue})
