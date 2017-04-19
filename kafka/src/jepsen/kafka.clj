@@ -57,7 +57,7 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-      (info (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
+      (info (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh config/server.properties"))))
       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
@@ -118,18 +118,18 @@
         kafka "kafka_2.11-0.10.0.1"
         ;kafka "kafka_2.12-0.10.2.0"
         ]
-    (c/exec :apt-get :update)
-    (debian/install-jdk8!)
+     (info (c/exec :apt-get :update))
+     (info (debian/install-jdk8!))
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
-    (c/exec :apt-get :install :-y :--force-yes "wget")
-    (c/exec :rm :-rf "/opt/")
-    (c/exec :mkdir :-p "/opt/")
+     (info (c/exec :apt-get :install :-y :--force-yes "wget"))
+     (info (c/exec :rm :-rf "/opt/"))
+     (info (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
-          (c/exec :wget (format "http://apache.claz.org/kafka/0.10.0.1/%s.tgz" kafka))
-          (c/exec :gzip :-d (format "%s.tgz" kafka))
-          (c/exec :tar :xf (format "%s.tar" kafka))
-          (c/exec :mv kafka "kafka")
-          (c/exec :rm (format "%s.tar" kafka)))
+          (info (c/exec :wget (format "http://apache.claz.org/kafka/0.10.0.1/%s.tgz" kafka)))
+          (info (c/exec :gzip :-d (format "%s.tgz" kafka)))
+          (info (c/exec :tar :xf (format "%s.tar" kafka)))
+          (info (c/exec :mv kafka "kafka"))
+          (info (c/exec :rm (format "%s.tar" kafka))))
     (info "install! Kafka before call deploy" node )
     (deploy id node version))
     (info "install! Kafka ends call deploy" node )
