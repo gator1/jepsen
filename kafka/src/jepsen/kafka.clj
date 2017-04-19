@@ -221,7 +221,7 @@
                        "jepsen.consumer"
                        [queue]
                        {"auto.offset.reset" "earliest"
-                        "enable.auto.commit" "true"}))
+                        "enable.auto.commit" "false"}))
 
 (defn dequeue-only! [op node queue]
   (let [c (consumer node queue)]
@@ -231,7 +231,9 @@
             value (:value message)]
            (if (nil? message)
              (assoc op :type :fail :value :exhausted)
-             (assoc op :type :ok :value value)))
+             (do
+               (gregor/commit-offsets! {:topic queue :partition (:partition message) :offset (+ 1 (:offset message))})
+               (assoc op :type :ok :value value))))
      (catch Exception e
        ; Exception is probably timeout variant
        (assoc op :type :fail :value :timeout))
@@ -286,10 +288,12 @@
                             (send-sync! p queue 0 nil value options)))))
 
 (defn enqueue-only! [node queue value]
-  (let [p (gregor/producer (str (name node) ":9092") {:acks "all"
-                                                      :retry.backoff.ms 1000})]
+  (let [p (gregor/producer (str (name node) ":9092") {"acks" "all"
+                                                      "retry.backoff.ms" "1000"
+                                                      "batch.size" "1"})]
     (try
-      (deref (gregor/send p queue value))
+      (deref (gregor/send p queue (str value)))
+      (gregor/flush p)
      (catch Exception e
        nil)
      (finally (gregor/close p)))))
