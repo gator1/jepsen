@@ -139,19 +139,19 @@
 (defn db
     "Kafka DB for a particular version."
     [version]
-    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")
-          id (Integer.  (re-find #"\d+", (name node)))]
+    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
       (reify db/DB
         (setup!  [_ test node]
-          (info "setup! zk " node)
-          ;(db/setup! zk test node)
-          (info "setup! kafka" node)
-          (install! node version)
-          ; need to start zk right before kafka deploy
-          (db/setup! zk test node)
-          (deploy id node version)
-          (info "setup! kafka done"  node)
-        )
+          (let [id (Integer.  (re-find #"\d+", (name node)))]
+            (info "setup! zk " node)
+            ;(db/setup! zk test node)
+            (info "setup! kafka" node)
+            (install! node version)
+            ; need to start zk right before kafka deploy
+            (db/setup! zk test node)
+            (deploy id node version)
+            (info "setup! kafka done"  node)
+        ))
         (teardown!  [_ test node]
           ;(info "tearing down Zookeeper")
           ;(db/teardown! zk test node)
