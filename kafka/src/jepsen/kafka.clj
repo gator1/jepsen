@@ -115,8 +115,8 @@
   (info "install! Kafka begins" node )
   ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
   (let [id  (Integer.  (re-find #"\d+", (name node)))
-        kafka "kafka_2.11-0.10.0.1"
-        ;kafka "kafka_2.12-0.10.2.0"
+        ;kafka "kafka_2.11-0.10.0.1"
+        kafka "kafka_2.12-0.10.2.0"
         ]
      (info (c/exec :apt-get :update))
      (info (debian/install-jdk8!))
@@ -125,27 +125,31 @@
      (info (c/exec :rm :-rf "/opt/"))
      (info (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
+          ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
           (info (c/exec :wget (format "http://apache.claz.org/kafka/0.10.0.1/%s.tgz" kafka)))
           (info (c/exec :gzip :-d (format "%s.tgz" kafka)))
           (info (c/exec :tar :xf (format "%s.tar" kafka)))
           (info (c/exec :mv kafka "kafka"))
           (info (c/exec :rm (format "%s.tar" kafka))))
-    (info "install! Kafka before call deploy" node )
-    (deploy id node version))
-    (info "install! Kafka ends call deploy" node )
+    (info "install! Kafka before call deploy" node ))
+  (info "install! Kafka ends call deploy" node )
   (info "install! Kafka ends" node )
 )
 
 (defn db
     "Kafka DB for a particular version."
     [version]
-    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
+    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")
+          id (Integer.  (re-find #"\d+", (name node)))]
       (reify db/DB
         (setup!  [_ test node]
           (info "setup! zk " node)
-          (db/setup! zk test node)
+          ;(db/setup! zk test node)
           (info "setup! kafka" node)
           (install! node version)
+          ; need to start zk right before kafka deploy
+          (db/setup! zk test node)
+          (deploy id node version)
           (info "setup! kafka done"  node)
         )
         (teardown!  [_ test node]
