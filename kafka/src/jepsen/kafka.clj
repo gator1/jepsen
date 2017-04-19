@@ -227,6 +227,17 @@
                        {"auto.offset.reset" "earliest"
                         "enable.auto.commit" "false"}))
 
+(defn get-cr [node queue]
+      (let [c (consumer node queue)]
+           (try
+             (println "subscription:" (gregor/subscription c))
+             (gregor/poll c)
+             (catch Exception e
+               (println "Exception:" e)
+               nil
+               )
+             (finally (gregor/close c)))))
+
 (defn dequeue-only! [op node queue]
   (let [c (consumer node queue)]
     (try
@@ -236,9 +247,12 @@
            (if (nil? message)
              (assoc op :type :fail :value :exhausted)
              (do
-               (gregor/commit-offsets! {:topic queue :partition (:partition message) :offset (+ 1 (:offset message))})
+               ;(println "message:" message)
+               (gregor/commit-offsets! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}])
+               ; If this fails, we will throw an exception and return timeout.  That way we don't consume it.
                (assoc op :type :ok :value value))))
      (catch Exception e
+       ;(pst e 25)
        ; Exception is probably timeout variant
        (assoc op :type :fail :value :timeout))
      (finally (gregor/close c)))))
