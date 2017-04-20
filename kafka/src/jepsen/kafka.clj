@@ -221,6 +221,7 @@
       (deref (gregor/send p queue (str value)))
       (gregor/flush p)
      (catch Exception e
+       (info (str "Enqueue exception: " (.getMessage e) e))
        (throw e))
      (finally (gregor/close p)))))
 
