@@ -42,19 +42,19 @@
     (setup! [_ test node]
       (c/su
         (info node "installing ZK" version)
-        (info "zookeeper install:" (debian/install {:zookeeper version
+        (info node "zookeeper install:" (debian/install {:zookeeper version
                          :zookeeper-bin version
                          :zookeeperd version}))
 
-        (info "zookeeper myid:" (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid"))
+        (info node "zookeeper myid:" (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid"))
 
-        (info "construct zoo.cfg:" (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
+        (info node "construct zoo.cfg:" (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
                            "\n"
                            (zoo-cfg-servers test))
                 :> "/etc/zookeeper/conf/zoo.cfg"))
 
         (info node "ZK restarting")
-        (info "service zookeeper restart:" (c/exec :service :zookeeper :restart))
+        (info node "service zookeeper restart:" (c/exec :service :zookeeper :restart))
         (info node "ZK ready")))
 
     (teardown! [_ test node]

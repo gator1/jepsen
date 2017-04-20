@@ -60,7 +60,7 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-      (info "kafka-server-start.sh:" (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
+      (info id "kafka-server-start.sh:" (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
@@ -112,12 +112,12 @@
         ;kafka "kafka_2.11-0.10.0.1"
         kafka "kafka_2.12-0.10.2.0"
         ]
-     (info "apt-get update:" (c/exec :apt-get :update))
-     (info "install-jdk8!:" (debian/install-jdk8!))
+     (info node "apt-get update:" (c/exec :apt-get :update))
+     (info node "install-jdk8!:" (debian/install-jdk8!))
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
-     (info "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
-     (info "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
-     (info "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
+     (info node "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
+     (info node "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
+     (info node "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
           ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
           (info "wget kafka:" (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka)))
