@@ -40,13 +40,14 @@
              [jepsen.os.debian :as debian])
   )
 
-(def topic "jepsen5")
+(def topic "jepsen")
 
 (defn create-topic
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
+  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic
+                            " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
                             ))))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
@@ -95,10 +96,6 @@
   (let [filename "/opt/kafka/config/server.properties"]
     ; (info "deploy calls set-broker-id!" filename node id )
     (set-broker-id! filename id)
-    ; set advertised host name, otherwise it is canonical name
-    ;(info "setting advertised host name to" (name node))
-    ;(c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
-    ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deploy start! begins" id )
     (start! id)
     (info "deploy start! ends!" id )
@@ -106,11 +103,6 @@
     (when (= id 1)
        (future  (create-topic)))
   ))
-
-;        kafka "kafka_2.11-0.8.2.2"
-
-;        kafka "kafka_2.10-0.8.2.1"
-;2.10-0.8.2.1
 
 (defn install! [node version]
    ; Install specific versions
@@ -155,6 +147,7 @@
             (info "setup! kafka done"  node)
         ))
         (teardown!  [_ test node]
+          ; Comment out for now, saves time on retries, setting up sometimes doesn't work first time, succeeds on second try...
           ;(info "tearing down Kafka NUKE!!!" node)
           ;(nuke!)
           ;(info "Kafka NUKED!!!" node)
@@ -173,17 +166,6 @@
                        [queue]
                        {"auto.offset.reset" "earliest"
                         "enable.auto.commit" "false"}))
-
-(defn get-cr [node queue]
-      (let [c (consumer node queue)]
-           (try
-             (println "subscription:" (gregor/subscription c))
-             (gregor/poll c)
-             (catch Exception e
-               (println "Exception:" e)
-               nil
-               )
-             (finally (gregor/close c)))))
 
 (defn dequeue-only! [op node queue]
   (let [c (consumer node queue)]
@@ -237,16 +219,7 @@
   client/Client
   (setup!  [this test node]
            (info "setup! client called" node)
-           (let [;brokers (->> (brokers node)
-                 ;            (filter #(= (:host %) (name node))))
-                 ;            first)
-                 ;a0 (info "brokers:" brokers)
-                 ;a1 (info "starting client producer." node)
-                 ;producer (producer node)
-                 ;a2 (info "starting client consumer" node)
-                 ;consumer (consumer node)
-                 ;messages (consumer/messages consumer queue)
-                 client {:producer nil :consumer nil :node node :messages nil}]
+           (let [client {:producer nil :consumer nil :node node :messages nil}]
             (info "done client setup..." node)
             (assoc this :client client)))
 
