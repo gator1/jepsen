@@ -40,13 +40,13 @@
              [jepsen.os.debian :as debian])
   )
 
-(def topic "jepsen")
+(def topic "jepsen5")
 
 (defn create-topic
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic ;" --config unclean.leader.election.enable=false --config min.insync.replicas=3"
+  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
                             ))))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
@@ -221,7 +221,7 @@
       (deref (gregor/send p queue (str value)))
       (gregor/flush p)
      (catch Exception e
-       nil)
+       (throw e))
      (finally (gregor/close p)))))
 
 (defn enqueue! [client queue op]
