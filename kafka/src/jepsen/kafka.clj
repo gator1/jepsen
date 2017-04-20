@@ -46,10 +46,10 @@
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic
+  (info "kafka-topics.sh --create:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic
                             " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
                             ))))
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
+  (info "kafka-topics.sh --list:" (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
 
@@ -60,7 +60,7 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-      (info (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
+      (info "kafka-server-start.sh:" (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
@@ -112,19 +112,19 @@
         ;kafka "kafka_2.11-0.10.0.1"
         kafka "kafka_2.12-0.10.2.0"
         ]
-     (info (c/exec :apt-get :update))
-     (info (debian/install-jdk8!))
+     (info "apt-get update:" (c/exec :apt-get :update))
+     (info "install-jdk8!:" (debian/install-jdk8!))
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
-     (info (c/exec :apt-get :install :-y :--force-yes "wget"))
-     (info (c/exec :rm :-rf "/opt/"))
-     (info (c/exec :mkdir :-p "/opt/"))
+     (info "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
+     (info "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
+     (info "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
           ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
-          (info (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka)))
-          (info (c/exec :gzip :-d (format "%s.tgz" kafka)))
-          (info (c/exec :tar :xf (format "%s.tar" kafka)))
-          (info (c/exec :mv kafka "kafka"))
-          (info (c/exec :rm (format "%s.tar" kafka))))
+          (info "wget kafka:" (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka)))
+          (info "gzip -d kafka:" (c/exec :gzip :-d (format "%s.tgz" kafka)))
+          (info "tar xf kafka:" (c/exec :tar :xf (format "%s.tar" kafka)))
+          (info "mv kafka:" (c/exec :mv kafka "kafka"))
+          (info "rm kafka.tar:" (c/exec :rm (format "%s.tar" kafka))))
     (info "install! Kafka before call deploy" node ))
   (info "install! Kafka ends call deploy" node )
   (info "install! Kafka ends" node )
