@@ -29,11 +29,12 @@
                       [nemesis   :as nemesis]
                       [report    :as report]
                       [codec     :as codec]
-                      [util      :as util :refer  [meh
+                      [util      :as util :refer  [meh log-op
                                                    timeout
                                                    relative-time-nanos]]
                       ]
              [jepsen.control :as c :refer  [|]]
+             [knossos.op :as op]
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
              [jepsen.os.debian :as debian])
@@ -208,7 +209,7 @@
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
   [client queue op]
-  (timeout 60000
+  (timeout 10000
            (assoc op :type :fail :value :timeout)
            (dequeue-only! op (:node client) queue)))
 
@@ -256,25 +257,20 @@
      (case  (:f op)
          :enqueue (enqueue! client queue op)
          :dequeue  (dequeue! client queue op)
-         :drain  (timeout 60000 (assoc op :type :info :value :timeout)
-                                           (loop []
-                                             (let [op' (->> (assoc op
-                                                                   :f    :dequeue
-                                                                   :time (relative-time-nanos))
-                                                            util/log-op
-                                                            (jepsen/conj-op! test)
-                                                            (dequeue! client queue))]
-                                               ; Log completion
-                                               (->> (assoc op' :time (relative-time-nanos))
-                                                    util/log-op
-                                                    (jepsen/conj-op! test))
-
-                                               (if (= :fail (:type op'))
-                                                 ; Done
-                                                 (assoc op :type :ok, :value :exhausted)
-
-                                                 ; Keep going.
-                                                 (recur)))))
+         :drain  (do
+                   ; Note that this does more dequeues than strictly necessary
+                   ; owing to lazy sequence chunking.
+                   (->> (repeat op)                  ; Explode drain into
+                        (map #(assoc % :f :dequeue)) ; infinite dequeues, then
+                        (map (partial dequeue! client queue))  ; dequeue something
+                        (take-while op/ok?)  ; as long as stuff arrives,
+                        (interleave (repeat op))     ; interleave with invokes
+                        (drop 1)                     ; except the initial one
+                        (map (fn [completion]
+                                 (log-op completion)
+                                 (jepsen/conj-op! test completion)))
+                        dorun)
+                   (assoc op :type :ok :value :exhausted))
          ))
   )
 
