@@ -18,13 +18,13 @@
 
 
 ; define disk device, sector
-(def fsdev "/dev/sdb")
-(def data "/home/gary/jepsen/block/data/temp")
+(def fsdev "/dev/rbd0")
+(def data "/home/vagrant/jepsen/ceph-block/data/temp")
 (def offset 12288)
 
 ; define host sudo password and primary node ip
-(def pwd-sudo "ubuntu")
-(def node-ip  "182.81.129.5")
+(def pwd-sudo "root")
+(def node-ip  "172.21.12.16")
 
 (def iter (atom 0))
 
