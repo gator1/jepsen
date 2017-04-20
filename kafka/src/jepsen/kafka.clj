@@ -45,7 +45,8 @@
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic " --config unclean.leader.election.enable=false --config min.insync.replicas=3"))))
+  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic " topic ;" --config unclean.leader.election.enable=false --config min.insync.replicas=3"
+                            ))))
   (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
@@ -199,6 +200,7 @@
      (catch Exception e
        ;(pst e 25)
        ; Exception is probably timeout variant
+       (info (str "Dequeue exception: " (.getMessage e) e))
        (assoc op :type :fail :value :timeout))
      (finally (gregor/close c)))))
 
