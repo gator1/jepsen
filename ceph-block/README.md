@@ -1,6 +1,21 @@
 # block
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure library designed to test ceph as a block device. The basic test works and ceph block works well.
+No inconsistence and availavlity with 100ms cut of an osd node is good. 
+
+The set up of ceph is often diffcult. The best of ceph setup is through vagrant virtualbox. 
+https://github.com/carmstrong/multinode-ceph-vagrant
+rbd mapping needs layering
+rbd create --size 4096 docker_test --image-feature layering
+
+ceph-docker and ceph-ansible are more difficult to setup. ceph docker is NOT for setting a bunch of docker containers to run ceph. It's to set up a bunch of VMs while the VMs run the ceph/daemon containers. 
+https://github.com/ceph/ceph-ansible/blob/master/vagrant_variables.yml.sample#L4 helps set up vm and this to set up ceph docker in the VMS
+https://www.sebastien-han.fr/blog/2016/02/08/easily-deploy-containerized-ceph-daemons-with-vagrant/
+
+the osd nodes' docker run exited, had to do it manually
+vagrant@ceph-osd2:~$ sudo docker run -d --net=host -v /etc/ceph:/etc/ceph -v /var/lib/ceph:/var/lib/ceph -v /dev:/dev --privileged=true -e OSD_FORCE_ZAP=1 -e OSD_DEVICE=/dev/sdb ceph/daemon osd_ceph_disk
+
+
 
 ## Usage
 
