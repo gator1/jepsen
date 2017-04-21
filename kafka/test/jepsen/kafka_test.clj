@@ -4,4 +4,4 @@
             [jepsen.kafka :as kafka]))
 
 (deftest kafka-test
-   (is  (:valid?  (:results  (jepsen/run!  (kafka/kafka-test "3.4.5+dfsg-2"))))))
+   (is  (:valid?  (:results  (jepsen/run!  (kafka/kafka-test "2.12" "0.10.2.0"))))))

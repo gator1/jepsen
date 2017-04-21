@@ -37,7 +37,8 @@
              [knossos.op :as op]
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
-             [jepsen.os.debian :as debian])
+             ;[jepsen.os.debian :as debian]
+             [jepsen.os.ubuntu :as ubuntu])
   )
 
 (def topic "jepsen")
@@ -104,23 +105,56 @@
        (future  (create-topic)))
   ))
 
-(defn install! [node version]
+(defn zk-node-ids
+      "Returns a map of node names to node ids."
+      [test]
+      (->> test
+           :nodes
+           (map-indexed (fn [i node] [node i]))
+           (into {})))
+
+(defn zk-node-id
+      "Given a test and a node name from that test, returns the ID for that node."
+      [test node]
+      ((zk-node-ids test) node))
+
+(defn zoo-cfg-servers
+      "Constructs a zoo.cfg fragment for servers."
+      [test]
+      (->> (zk-node-ids test)
+           (map (fn [[node id]]
+                    (str "server." id "=" (name node) ":2888:3888")))
+           (str/join "\n")))
+
+(defn zk-deploy [test node]
+  (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid")
+
+  (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
+                     "\n"
+                     (zoo-cfg-servers test))
+          :> "/etc/zookeeper/conf/zoo.cfg")
+
+  (info node "ZK restarting")
+  (c/exec :service :zookeeper :restart)
+  (info node "ZK ready"))
+
+(defn install! [node sversion kversion]
    ; Install specific versions
   (info "install! Kafka begins" node )
   ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
   (let [id  (Integer.  (re-find #"\d+", (name node)))
         ;kafka "kafka_2.11-0.10.0.1"
-        kafka "kafka_2.12-0.10.2.0"
+        kafka (format "kafka_%s-%s" sversion kversion)
         ]
-     (info node "apt-get update:" (c/exec :apt-get :update))
-     (info node "install-jdk8!:" (debian/install-jdk8!))
+     ;(info node "apt-get update:" (c/exec :apt-get :update))
+     ;(info node "install-jdk8!:" (debian/install-jdk8!))
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
-     (info node "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
+     ;(info node "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
      (info node "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
      (info node "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
           ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
-          (info "wget kafka:" (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka)))
+          (info "wget kafka:" (c/exec :wget (format "http://apache.claz.org/kafka/%s/%s.tgz" kversion kafka)))
           (info "gzip -d kafka:" (c/exec :gzip :-d (format "%s.tgz" kafka)))
           (info "tar xf kafka:" (c/exec :tar :xf (format "%s.tar" kafka)))
           (info "mv kafka:" (c/exec :mv kafka "kafka"))
@@ -132,18 +166,19 @@
 
 (defn db
     "Kafka DB for a particular version."
-    [version]
-    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
+    [sversion kversion]
+    (let [zk (zk/db "3.4.8-1")]
       (reify db/DB
         (setup!  [_ test node]
           (let [id (Integer.  (re-find #"\d+", (name node)))]
-            (info "setup! zk " node)
+            ;(info "setup! zk " node)
             ;(db/setup! zk test node)
-            (info "setup! kafka" node)
-            (install! node version)
+            ;(info "setup! kafka" node)
+            ;(install! node sversion kversion)
             ; need to start zk right before kafka deploy
-            (db/setup! zk test node)
-            (deploy id node version)
+            ;(db/setup! zk test node)
+            (zk-deploy test node)
+            (deploy id node kversion)
             (info "setup! kafka done"  node)
         ))
         (teardown!  [_ test node]
@@ -156,7 +191,7 @@
           ))))
 
 (defn test-setup-all []
-      (let [db (db "3.4.5+dfsg-2")
+      (let [db (db "2.12" "0.10.2.0")
             test tests/noop-test]
            (doall (map #(c/on % (db/setup! db test %)) [:n1 :n2 :n3 :n4 :n5]))))
 
@@ -301,10 +336,10 @@
 
 
 (defn kafka-test
-    [version]
+    [sversion kversion]
       (assoc  tests/noop-test
-             :os debian/os
-             :db  (db version)
+             :os ubuntu/os
+             :db  (db sversion kversion)
              :client  (client)
              :model   (model/unordered-queue)
              :nemesis (nemesis/partition-random-halves)
