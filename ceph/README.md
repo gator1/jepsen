@@ -2,8 +2,9 @@ Dockerized Ceph
 =================
 
 ```
-this doesn't work, the dind tried to spin off all the cpeh nodes such as mon and osd. But ceph nodes seem to need systemd running as pid 1,
-which in turn runs sshd as its service. This makes tutum/debian or similar images that run sshd as docker image app not working. Running systemd-sshd has other issues.
+this doesn't work, the dind tried to spin off all the cpeh nodes such as mon and osd. But ceph nodes seem to 
+need systemd running as pid 1, which in turn runs sshd as its service. This makes tutum/debian or similar 
+images that run sshd as docker image app not working. Running systemd-sshd has other issues.
 
 So I turn to docker-compose, ceph-docker directory has a working version. 
 
