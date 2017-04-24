@@ -37,18 +37,20 @@
              [knossos.op :as op]
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
-             [jepsen.os.debian :as debian])
+             ;[jepsen.os.debian :as debian]
+             [jepsen.os.ubuntu :as ubuntu])
   )
 
-(def topic "jepsen5")
+(def topic "jepsen")
 
 (defn create-topic
   []
   ;(Thread/sleep 20)
   (info "creating topic")
-  (info (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
+  (info "kafka-topics.sh --create:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 100 --topic " topic
+                            " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
                             ))))
-  (info (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
+  (info "kafka-topics.sh --list:" (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (info "creating topic done")
 )
 
@@ -59,7 +61,7 @@
   (c/su
     (info "start!  begins" id)
     (c/cd "/opt/kafka"
-      (info (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
+      (info id "kafka-server-start.sh:" (c/exec (c/lit "/opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties"))))
       ;(c/exec (c/lit "/opt/kafka/bin/zookeeper-server-start.sh -daemon config/zookeeper.properties")))
     (info "start!  ends" id)
   )
@@ -95,10 +97,6 @@
   (let [filename "/opt/kafka/config/server.properties"]
     ; (info "deploy calls set-broker-id!" filename node id )
     (set-broker-id! filename id)
-    ; set advertised host name, otherwise it is canonical name
-    ;(info "setting advertised host name to" (name node))
-    ;(c/exec :echo (str "advertised.host.name=" (name node)) :> filename)
-    ; (info "deplpoy set-broker-id done calls start!!" id )
     (info "deploy start! begins" id )
     (start! id)
     (info "deploy start! ends!" id )
@@ -107,32 +105,60 @@
        (future  (create-topic)))
   ))
 
-;        kafka "kafka_2.11-0.8.2.2"
+(defn zk-node-ids
+      "Returns a map of node names to node ids."
+      [test]
+      (->> test
+           :nodes
+           (map-indexed (fn [i node] [node i]))
+           (into {})))
 
-;        kafka "kafka_2.10-0.8.2.1"
-;2.10-0.8.2.1
+(defn zk-node-id
+      "Given a test and a node name from that test, returns the ID for that node."
+      [test node]
+      ((zk-node-ids test) node))
 
-(defn install! [node version]
+(defn zoo-cfg-servers
+      "Constructs a zoo.cfg fragment for servers."
+      [test]
+      (->> (zk-node-ids test)
+           (map (fn [[node id]]
+                    (str "server." id "=" (name node) ":2888:3888")))
+           (str/join "\n")))
+
+(defn zk-deploy [test node]
+  (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid")
+
+  (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
+                     "\n"
+                     (zoo-cfg-servers test))
+          :> "/etc/zookeeper/conf/zoo.cfg")
+
+  (info node "ZK restarting")
+  (c/exec :service :zookeeper :restart)
+  (info node "ZK ready"))
+
+(defn install! [node sversion kversion]
    ; Install specific versions
   (info "install! Kafka begins" node )
   ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
   (let [id  (Integer.  (re-find #"\d+", (name node)))
         ;kafka "kafka_2.11-0.10.0.1"
-        kafka "kafka_2.12-0.10.2.0"
+        kafka (format "kafka_%s-%s" sversion kversion)
         ]
-     (info (c/exec :apt-get :update))
-     (info (debian/install-jdk8!))
+     ;(info node "apt-get update:" (c/exec :apt-get :update))
+     ;(info node "install-jdk8!:" (debian/install-jdk8!))
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
-     (info (c/exec :apt-get :install :-y :--force-yes "wget"))
-     (info (c/exec :rm :-rf "/opt/"))
-     (info (c/exec :mkdir :-p "/opt/"))
+     ;(info node "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
+     (info node "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
+     (info node "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
           ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
-          (info (c/exec :wget (format "http://apache.claz.org/kafka/0.10.2.0/%s.tgz" kafka)))
-          (info (c/exec :gzip :-d (format "%s.tgz" kafka)))
-          (info (c/exec :tar :xf (format "%s.tar" kafka)))
-          (info (c/exec :mv kafka "kafka"))
-          (info (c/exec :rm (format "%s.tar" kafka))))
+          (info "wget kafka:" (c/exec :wget (format "http://apache.claz.org/kafka/%s/%s.tgz" kversion kafka)))
+          (info "gzip -d kafka:" (c/exec :gzip :-d (format "%s.tgz" kafka)))
+          (info "tar xf kafka:" (c/exec :tar :xf (format "%s.tar" kafka)))
+          (info "mv kafka:" (c/exec :mv kafka "kafka"))
+          (info "rm kafka.tar:" (c/exec :rm (format "%s.tar" kafka))))
     (info "install! Kafka before call deploy" node ))
   (info "install! Kafka ends call deploy" node )
   (info "install! Kafka ends" node )
@@ -140,21 +166,23 @@
 
 (defn db
     "Kafka DB for a particular version."
-    [version]
-    (let [zk (zk/db "3.4.5+dfsg-2+deb8u1")]
+    [sversion kversion]
+    (let [zk (zk/db "3.4.8-1")]
       (reify db/DB
         (setup!  [_ test node]
           (let [id (Integer.  (re-find #"\d+", (name node)))]
-            (info "setup! zk " node)
+            ;(info "setup! zk " node)
             ;(db/setup! zk test node)
-            (info "setup! kafka" node)
-            (install! node version)
+            ;(info "setup! kafka" node)
+            ;(install! node sversion kversion)
             ; need to start zk right before kafka deploy
-            (db/setup! zk test node)
-            (deploy id node version)
+            ;(db/setup! zk test node)
+            (zk-deploy test node)
+            (deploy id node kversion)
             (info "setup! kafka done"  node)
         ))
         (teardown!  [_ test node]
+          ; Comment out for now, saves time on retries, setting up sometimes doesn't work first time, succeeds on second try...
           ;(info "tearing down Kafka NUKE!!!" node)
           ;(nuke!)
           ;(info "Kafka NUKED!!!" node)
@@ -163,7 +191,7 @@
           ))))
 
 (defn test-setup-all []
-      (let [db (db "3.4.5+dfsg-2")
+      (let [db (db "2.12" "0.10.2.0")
             test tests/noop-test]
            (doall (map #(c/on % (db/setup! db test %)) [:n1 :n2 :n3 :n4 :n5]))))
 
@@ -173,17 +201,6 @@
                        [queue]
                        {"auto.offset.reset" "earliest"
                         "enable.auto.commit" "false"}))
-
-(defn get-cr [node queue]
-      (let [c (consumer node queue)]
-           (try
-             (println "subscription:" (gregor/subscription c))
-             (gregor/poll c)
-             (catch Exception e
-               (println "Exception:" e)
-               nil
-               )
-             (finally (gregor/close c)))))
 
 (defn dequeue-only! [op node queue]
   (let [c (consumer node queue)]
@@ -237,16 +254,7 @@
   client/Client
   (setup!  [this test node]
            (info "setup! client called" node)
-           (let [;brokers (->> (brokers node)
-                 ;            (filter #(= (:host %) (name node))))
-                 ;            first)
-                 ;a0 (info "brokers:" brokers)
-                 ;a1 (info "starting client producer." node)
-                 ;producer (producer node)
-                 ;a2 (info "starting client consumer" node)
-                 ;consumer (consumer node)
-                 ;messages (consumer/messages consumer queue)
-                 client {:producer nil :consumer nil :node node :messages nil}]
+           (let [client {:producer nil :consumer nil :node node :messages nil}]
             (info "done client setup..." node)
             (assoc this :client client)))
 
@@ -328,10 +336,10 @@
 
 
 (defn kafka-test
-    [version]
+    [sversion kversion]
       (assoc  tests/noop-test
-             :os debian/os
-             :db  (db version)
+             :os ubuntu/os
+             :db  (db sversion kversion)
              :client  (client)
              :model   (model/unordered-queue)
              :nemesis (nemesis/partition-random-halves)

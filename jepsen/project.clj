@@ -1,4 +1,4 @@
-(defproject jepsen "0.1.2"
+(defproject org.clojars.khdegraaf/jepsen "0.1.2.1"
   :description "Call Me Maybe: Network Partitions in Practice"
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.fressian "0.2.1"]
@@ -10,6 +10,7 @@
                  [hiccup "1.0.5"]
                  [org.clojars.achim/multiset "0.1.0"]
                  [byte-streams "0.2.2"]]
+  :deploy-repositories [["releases" :clojars]]
   :jvm-opts ["-Xmx32g" "-XX:+UseConcMarkSweepGC" "-XX:+UseParNewGC"
              "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts"
              "-XX:+UseFastAccessorMethods" "-server"
