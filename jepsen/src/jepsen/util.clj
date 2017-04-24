@@ -82,26 +82,29 @@
   fs)
 
 (defn op->str
-  "Format an operation as a string."
-  [op]
-  (str (:process op)         \tab
-       (:type op)            \tab
-       (pr-str (:f op))      \tab
-       (pr-str (:value op))
-       (when-let [err (:error op)]
-         (str \tab err))))
+      "Format an operation as a string."
+      [op]
+      (str (:process op)         \tab
+           (:type op)            \tab
+           (pr-str (:f op))      \tab
+           (pr-str (:value op))
+           (when-let [debug (:debug op)]
+                     (str \tab debug))
+           (when-let [err (:error op)]
+                     (str \tab err))))
 
 (defn prn-op
-  "Prints an operation to the console."
-  [op]
-  (pr (:process op)) (print \tab)
-  (pr (:type op))    (print \tab)
-  (pr (:f op))       (print \tab)
-  (pr (:value op))
-  (when-let [err (:error op)]
-    (assert (contains? op :value)) ; if there is no value, error would be in wrong column
-    (print \tab) (pr err))
-  (print \newline))
+      "Prints an operation to the console."
+      [op]
+      (pr (:process op)) (print \tab)
+      (pr (:type op))    (print \tab)
+      (pr (:f op))       (print \tab)
+      (pr (:value op))
+      (when-let [debug (:debug op)]
+                (print \tab) (print debug))
+      (when-let [err (:error op)]
+                (print \tab) (print err))
+      (print \newline))
 
 (defn print-history
   "Prints a history to the console."
