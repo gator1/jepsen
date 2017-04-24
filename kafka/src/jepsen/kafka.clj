@@ -279,8 +279,10 @@
 
   (invoke!  [this test op]
      (case  (:f op)
-         :enqueue (do (topic-status (:node client)) (enqueue! client queue op))
-         :dequeue  (do (topic-status (:node client)) (dequeue! client queue op))
+         :enqueue (do ;(topic-status (:node client))
+                      (enqueue! client queue op))
+         :dequeue  (do ;(topic-status (:node client))
+                       (dequeue! client queue op))
          :drain  (do
                    ; Note that this does more dequeues than strictly necessary
                    ; owing to lazy sequence chunking.
