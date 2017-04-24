@@ -1,0 +1,59 @@
+version: '2'
+services:
+  control:
+    container_name: ceph-control
+    hostname: control
+    build: ./control
+    env_file: ./secret/control.env
+    privileged: true
+    links:
+      - m1
+      - m2
+      - m3
+      - o1
+      - o2
+      - o3
+      - o4
+      - n1
+      - n2
+  node:
+    container_name: ceph-node
+    build: ./node
+    env_file: ./secret/node.env
+    privileged: true
+  m1:
+    extends: node
+    container_name: ceph-m1
+    hostname: m1
+  m2:
+    extends: node
+    container_name: ceph-m2
+    hostname: m2
+  m3:
+    extends: node
+    container_name: ceph-m3
+    hostname: m3
+  o1:
+    extends: node
+    container_name: ceph-o1
+    hostname: o1
+  o2:
+    extends: node
+    container_name: ceph-o2
+    hostname: o2
+  o3:
+    extends: node
+    container_name: ceph-o3
+    hostname: o3
+  o4:
+    extends: node
+    container_name: ceph-o4
+    hostname: o4
+  n1:
+    extends: node
+    container_name: ceph-n1
+    hostname: n1
+  n2:
+    extends: node
+    container_name: ceph-n2
+    hostname: n2
