@@ -25,7 +25,7 @@ RUN wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein
 
 # You need to locate jepsen in this directory (up.sh does that automatically)
 ADD jepsen /jepsen
-RUN cd /jepsen/jepsen/kafka && lein install
+RUN cd /jepsen/jepsen && lein install
 
 ADD ./bashrc /root/.bashrc
 ADD ./init.sh /init.sh

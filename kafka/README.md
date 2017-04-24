@@ -2,16 +2,20 @@
 
 A Clojure library designed to ... well, that part is up to you.
 
-Setup docker containers to run by executing:
+There is a local version of docker compose in the local docker subdirectory
+It can be invoked by the following:
 
-docker run --privileged -it gators/jepsen 
-git pull 
+    ./up.sh
+    
+Once all the nodes are up, you can connect to the control node via:
+    
+    docker exec -it jepsen-control bash
 
-to fetch latest code (image is currently of date and won't run) and then
-
-lein test
-
-in kafka subdirectory
+The just
+    
+    lein test
+    
+in kafka subdirectory in order to execute the test
 
 ## Usage
 

@@ -14,7 +14,7 @@ echo "=> Done!"
 touch /.root_pw_set
 
 echo "========================================================================"
-echo "You can now connect to this Debian container via SSH using:"
+echo "You can now connect to this Ubuntu container via SSH using:"
 echo ""
 echo "    ssh -p <port> root@<host>"
 echo "and enter the root password '$PASS' when prompted"

@@ -5,7 +5,7 @@ if [ "${AUTHORIZED_KEYS}" != "**None**" ]; then
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
     touch /root/.ssh/authorized_keys
-    chmod 600 exit
+    #chmod 600 exit
     IFS=$'\n'
     arr=$(echo ${AUTHORIZED_KEYS} | tr "," "\n")
     for x in $arr
