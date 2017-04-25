@@ -29,13 +29,13 @@ All commands are counducted in /root/test-cluster directory unless otherwise not
 1. ceph-deploy new mon1 mon2 mon3  
 	this creates a ceph.conf among others in /root/test-cluster. 
 
-2. modify ceph.conf to add   
-   osd pool default size = 3 # because we want 3 osd disk initially
-   mon_clock_drift_allowed = 1
-   osd max object name len = 256
-   osd max object namespace len = 64
+2. modify ceph.conf to add  
+   osd pool default size = 3 # because we want 3 osd disk initially  
+   mon_clock_drift_allowed = 1  
+   osd max object name len = 256  
+   osd max object namespace len = 64  
 
-3. ceph-deploy install --release=kraken control  mon1 mon2 mon3 osd0 osd1 osd2 client  # list all the nodes, this install ceph software
+3. ceph-deploy install --release=kraken control  mon1 mon2 mon3 osd0 osd1 osd2 client  # list all the nodes, this install ceph software  
    this will take some time to finish
 
 4. ceph-deploy mon create-initial #starts monitor (three nodes because of step 1)
@@ -50,37 +50,36 @@ All commands are counducted in /root/test-cluster directory unless otherwise not
     mkdir /var/local/osd2 && sudo chown ceph:ceph /var/local/osd2   
     exit  
 
-6.  ceph-deploy osd prepare osd0:/var/local/osd0 osd1:/var/local/osd1 osd2:/var/local/osd2
-
+6.  ceph-deploy osd prepare osd0:/var/local/osd0 osd1:/var/local/osd1 osd2:/var/local/osd2  
     ceph-deploy osd activate  osd0:/var/local/osd0 osd1:/var/local/osd1 osd2:/var/local/osd2  
-
-7. ceph-deploy admin control mon1 mon2 mon3 osd0 osd1 osd2 client  ~                                       
+  
+7. ceph-deploy admin control mon1 mon2 mon3 osd0 osd1 osd2 client  
 
 ```
-may not be necessary, maybe because I use root? anyway if there is complain about keyring, do it.
+may not be necessary, maybe because I use root? anyway if there is complain about keyring, do it.  
 ```
 
-8. chmod +r ./ceph.client.admin.keyring  
-   ssh mon1 chmod +r /etc/ceph/ceph.client.admin.keyring 
-   ssh mon2 chmod +r /etc/ceph/ceph.client.admin.keyring 
-   ssh mon2 chmod +r /etc/ceph/ceph.client.admin.keyring 
+8. chmod +r ./ceph.client.admin.keyring    
+   ssh mon1 chmod +r /etc/ceph/ceph.client.admin.keyring   
+   ssh mon2 chmod +r /etc/ceph/ceph.client.admin.keyring   
+   ssh mon2 chmod +r /etc/ceph/ceph.client.admin.keyring   
 
 
 9. ceph health 
- it tells you the ceph cluster with docker is up and running. 
+ it tells you the ceph cluster with docker is up and running.   
 
 ```
-root@control:~/test-cluster# ceph health
-HEALTH_OK
-root@control:~/test-cluster# ceph osd tree
-ID WEIGHT  TYPE NAME     UP/DOWN REWEIGHT PRIMARY-AFFINITY 
--1 2.31326 root default                                    
--2 0.77109     host osd0                                   
- 0 0.77109         osd.0      up  1.00000          1.00000 
--3 0.77109     host osd1                                   
- 1 0.77109         osd.1      up  1.00000          1.00000 
--4 0.77109     host osd2                                   
- 2 0.77109         osd.2      up  1.00000          1.00000 
+root@control:~/test-cluster# ceph health  
+HEALTH_OK  
+root@control:~/test-cluster# ceph osd tree  
+ID WEIGHT  TYPE NAME     UP/DOWN REWEIGHT PRIMARY-AFFINITY   
+-1 2.31326 root default                                      
+-2 0.77109     host osd0                                     
+ 0 0.77109         osd.0      up  1.00000          1.00000   
+-3 0.77109     host osd1                                     
+ 1 0.77109         osd.1      up  1.00000          1.00000   
+-4 0.77109     host osd2                                     
+ 2 0.77109         osd.2      up  1.00000          1.00000   
 ```
 
-10. Congratulations!!!
+10. Congratulations!!!  
