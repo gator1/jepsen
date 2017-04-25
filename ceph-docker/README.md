@@ -83,3 +83,18 @@ ID WEIGHT  TYPE NAME     UP/DOWN REWEIGHT PRIMARY-AFFINITY
 ```
 
 10. Congratulations!!!  
+
+### Create a block device, this doesn't work, probably need a rbd driver plugging.
+
+
+```console
+$ vagrant ssh ceph-client
+root@client:~# rbd create foo --size 4096 -m mon1 --image-feature layering
+root@client:~# rbd map foo --pool rbd --name client.admin -m mon1   # hang up here 
+root@client:~# mkfs.ext4 -m0 /dev/rbd/rbd/foo
+root@client:~# mkdir /mnt/ceph-block-device
+root@client:~# mount /dev/rbd/rbd/foo /mnt/ceph-block-device
+```
+
+see https://github.com/yp-engineering/rbd-docker-plugin/issues/1 
+for more info

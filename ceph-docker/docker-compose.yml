@@ -1,59 +1,63 @@
 version: '2'
 services:
   control:
-    container_name: ceph-control
+    container_name: jepsen-ceph-control
     hostname: control
     build: ./control
     env_file: ./secret/control.env
     privileged: true
     links:
-      - m1
-      - m2
-      - m3
-      - o1
-      - o2
-      - o3
-      - o4
-      - n1
-      - n2
+      - mon1
+      - mon2
+      - mon3
+      - osd0
+      - osd1
+      - osd2
+      - osd3
+      - client
   node:
     container_name: ceph-node
     build: ./node
     env_file: ./secret/node.env
     privileged: true
-  m1:
+    cap_add:
+       - ALL
+    volumes: 
+       # Specify an absolute path mapping
+       - /dev:/dev 
+       - /sys:/sys 
+       - /bin:/bin 
+       - /sbin:/sbin 
+       - /lib/modules:/lib/modules
+  mon1:
     extends: node
-    container_name: ceph-m1
-    hostname: m1
-  m2:
+    container_name: ceph-mon1
+    hostname: mon1
+  mon2:
     extends: node
-    container_name: ceph-m2
-    hostname: m2
-  m3:
+    container_name: ceph-mon2
+    hostname: mon2
+  mon3:
     extends: node
-    container_name: ceph-m3
-    hostname: m3
-  o1:
+    container_name: ceph-mon3
+    hostname: mon3
+  osd0:
     extends: node
-    container_name: ceph-o1
-    hostname: o1
-  o2:
+    container_name: ceph-osd0
+    hostname: osd0
+  osd1:
     extends: node
-    container_name: ceph-o2
-    hostname: o2
-  o3:
+    container_name: ceph-osd1
+    hostname: osd1
+  osd2:
     extends: node
-    container_name: ceph-o3
-    hostname: o3
-  o4:
+    container_name: ceph-osd2
+    hostname: osd2
+  osd3:
     extends: node
-    container_name: ceph-o4
-    hostname: o4
-  n1:
+    container_name: ceph-osd3
+    hostname: osd3
+  client:
     extends: node
-    container_name: ceph-n1
-    hostname: n1
-  n2:
-    extends: node
-    container_name: ceph-n2
-    hostname: n2
+    container_name: ceph-client
+    hostname: client
