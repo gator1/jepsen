@@ -88,7 +88,7 @@ ID WEIGHT  TYPE NAME     UP/DOWN REWEIGHT PRIMARY-AFFINITY
 
 
 ```console
-$ vagrant ssh ceph-client
+$ ssh ceph-client
 root@client:~# rbd create foo --size 4096 -m mon1 --image-feature layering
 root@client:~# rbd map foo --pool rbd --name client.admin -m mon1   # hang up here 
 root@client:~# mkfs.ext4 -m0 /dev/rbd/rbd/foo
