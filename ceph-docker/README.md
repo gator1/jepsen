@@ -26,10 +26,10 @@ control/Dockerfile made a directory /root/test-cluster and the control node's sh
 
 All commands are counducted in /root/test-cluster directory unless otherwise noted.
 
-1. ceph-deploy new mon1 mon2 mon3 
+1. ceph-deploy new mon1 mon2 mon3  
 	this creates a ceph.conf among others in /root/test-cluster. 
 
-2. modify ceph.conf to add 
+2. modify ceph.conf to add   
    osd pool default size = 3 # because we want 3 osd disk initially
    mon_clock_drift_allowed = 1
    osd max object name len = 256
@@ -40,22 +40,15 @@ All commands are counducted in /root/test-cluster directory unless otherwise not
 
 4. ceph-deploy mon create-initial #starts monitor (three nodes because of step 1)
 
-5.  ssh osd0 \n
-    mkdir /var/local/osd0 && sudo chown ceph:ceph /var/local/osd0 
-
-    exit
-
-    ssh osd1
-
-    mkdir /var/local/osd1 && sudo chown ceph:ceph /var/local/osd1 
-
-    exit
-
-    ssh osd2
-
-    mkdir /var/local/osd2 && sudo chown ceph:ceph /var/local/osd2 
-
-    exit
+5.  ssh osd0  
+    mkdir /var/local/osd0 && sudo chown ceph:ceph /var/local/osd0   
+    exit  
+    ssh osd1  
+    mkdir /var/local/osd1 && sudo chown ceph:ceph /var/local/osd1   
+    exit  
+    ssh osd2  
+    mkdir /var/local/osd2 && sudo chown ceph:ceph /var/local/osd2   
+    exit  
 
 6.  ceph-deploy osd prepare osd0:/var/local/osd0 osd1:/var/local/osd1 osd2:/var/local/osd2
 
