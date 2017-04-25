@@ -42,28 +42,31 @@
     (setup! [_ test node]
       (c/su
         (info node "installing ZK" version)
-        (debian/install {:zookeeper version
+        (info node "zookeeper install:" (debian/install {:zookeeper version
                          :zookeeper-bin version
-                         :zookeeperd version})
+                         :zookeeperd version}))
 
-        (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid")
+        (info node "zookeeper myid:" (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid"))
 
-        (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
+        (info node "construct zoo.cfg:" (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
                            "\n"
                            (zoo-cfg-servers test))
-                :> "/etc/zookeeper/conf/zoo.cfg")
+                :> "/etc/zookeeper/conf/zoo.cfg"))
 
         (info node "ZK restarting")
-        (c/exec :service :zookeeper :restart)
+        (info node "service zookeeper restart:" (c/exec :service :zookeeper :restart))
         (info node "ZK ready")))
 
     (teardown! [_ test node]
       (info node "tearing down ZK")
       (c/su
         (c/exec :service :zookeeper :stop)
+        ; Stop seems to fail.
+        (c/exec (c/lit  "ps aux | grep zookeeper | grep -v grep | awk '{ print $2 }' | xargs kill -s kill"))
         (c/exec :rm :-rf
                 (c/lit "/var/lib/zookeeper/version-*")
-                (c/lit "/var/log/zookeeper/*"))))
+                (c/lit "/var/log/zookeeper/*")
+                (c/lit "/etc/zookeeper/*"))))
 
     db/LogFiles
     (log-files [_ test node]

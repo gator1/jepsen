@@ -1,0 +1,63 @@
+version: '2'
+services:
+  control:
+    container_name: jepsen-ceph-control
+    hostname: control
+    build: ./control
+    env_file: ./secret/control.env
+    privileged: true
+    links:
+      - mon1
+      - mon2
+      - mon3
+      - osd0
+      - osd1
+      - osd2
+      - osd3
+      - client
+  node:
+    container_name: ceph-node
+    build: ./node
+    env_file: ./secret/node.env
+    privileged: true
+    cap_add:
+       - ALL
+    volumes: 
+       # Specify an absolute path mapping
+       - /dev:/dev 
+       - /sys:/sys 
+       - /bin:/bin 
+       - /sbin:/sbin 
+       - /lib/modules:/lib/modules
+  mon1:
+    extends: node
+    container_name: ceph-mon1
+    hostname: mon1
+  mon2:
+    extends: node
+    container_name: ceph-mon2
+    hostname: mon2
+  mon3:
+    extends: node
+    container_name: ceph-mon3
+    hostname: mon3
+  osd0:
+    extends: node
+    container_name: ceph-osd0
+    hostname: osd0
+  osd1:
+    extends: node
+    container_name: ceph-osd1
+    hostname: osd1
+  osd2:
+    extends: node
+    container_name: ceph-osd2
+    hostname: osd2
+  osd3:
+    extends: node
+    container_name: ceph-osd3
+    hostname: osd3
+  client:
+    extends: node
+    container_name: ceph-client
+    hostname: client

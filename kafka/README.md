@@ -2,9 +2,24 @@
 
 A Clojure library designed to ... well, that part is up to you.
 
+There is a local version of docker compose in the local docker subdirectory
+It can be invoked by the following:
+
+    ./up.sh
+    
+Once all the nodes are up, you can connect to the control node via:
+    
+    docker exec -it jepsen-control bash
+
+The just
+    
+    lein test
+    
+in kafka subdirectory in order to execute the test
+
 ## Usage
 
-FIXME
+lein test
 
 ## License
 

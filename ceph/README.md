@@ -1,6 +1,14 @@
 Dockerized Ceph
 =================
 
+```
+this doesn't work, the dind tried to spin off all the cpeh nodes such as mon and osd. But ceph nodes seem to 
+need systemd running as pid 1, which in turn runs sshd as its service. This makes tutum/debian or similar 
+images that run sshd as docker image app not working. Running systemd-sshd has other issues.
+
+So I turn to docker-compose, ceph-docker directory has a working version. 
+
+ ```
 This docker image attempts to simplify the setup required by ceph.
 It is intended to be used by a CI tool or anyone with docker who wants to try ceph and jepsen themselves.
 
@@ -10,7 +18,7 @@ The dind uses ubuntu. For ceph since I got the most of ideas from redhat lab on
 line tutorial, centos is the one for ceph. Now this is saved as is, dind uses
 ubuntu and the ceph nodes are centos. In the process to try to change dind to
 centos. 
-
+```
 To start run (note the required --privileged flag)
 Got my own with the jepsen latest from gator1, me!
 
