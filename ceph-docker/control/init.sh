@@ -10,17 +10,15 @@ if [ ! -f ~/.ssh/known_hosts ]; then
     echo $SSH_PUBLIC_KEY > ~/.ssh/id_rsa.pub
     echo > ~/.ssh/known_hosts
     for f in $(seq 1 3);do
-	ssh-keyscan -t rsa m$f >> ~/.ssh/known_hosts
-        sshpass -p root ssh-copy-id root@m$f
+	ssh-keyscan -t rsa mon$f >> ~/.ssh/known_hosts
+        sshpass -p root ssh-copy-id root@mon$f
     done
-    for f in $(seq 1 4);do
-	ssh-keyscan -t rsa o$f >> ~/.ssh/known_hosts
-        sshpass -p root ssh-copy-id root@o$f
+    for f in $(seq 0 3);do
+	ssh-keyscan -t rsa osd$f >> ~/.ssh/known_hosts
+        sshpass -p root ssh-copy-id root@osd$f
     done
-    for f in $(seq 1 2);do
-	ssh-keyscan -t rsa n$f >> ~/.ssh/known_hosts
-        sshpass -p root ssh-copy-id root@n$f
-    done
+    ssh-keyscan -t rsa client >> ~/.ssh/known_hosts
+    sshpass -p root ssh-copy-id root@client
 fi
 
 # TODO: assert that SSH_PRIVATE_KEY==~/.ssh/id_rsa
@@ -29,7 +27,7 @@ cat <<EOF
 Welcome to Jepsen ceph on Docker
 ===========================
 
-Please run \`docker exec -it ceph-control bash\` in another terminal to proceed.
+Please run \`docker exec -it jepsen-ceph-control bash\` in another terminal to proceed.
 EOF
 
 # hack for keep this container running

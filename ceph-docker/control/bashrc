@@ -11,4 +11,5 @@ To run a test:
    cd mongodb && lein run
 EOF
 
-cd /jepsen
+#cd /jepsen
+cd /root/test-cluster
