@@ -15,9 +15,9 @@
   (:use     [clojure.java.shell :only [sh]]) )
 
 ; define path
-;(def ^:private file-path "/home/gary/mike/gator1/jepsen/file-r/mount/n")
+;(def ^:private file-path "/home/gary/mike/gator1/jepsen/file-e/mount/n")
 (def ^:private file-path "mount/n")
-(def ^:private temp-path "/home/gary/mike/gator1/jepsen/file-r/data/")
+(def ^:private temp-path "/home/gary/mike/gator1/jepsen/file-e/data/")
 
 ; define operations
 (defn r   [_ _] {:type :invoke, :f :read, :value nil})
@@ -72,7 +72,7 @@
     
     (teardown! [_ test])))
 
-(def ^:private key-list [10 20 30 40 50])
+(def key-list [10 20 30 40 50])
 (def ^:private skip-size 512) ; 256k=512*512b
 
 ; operations for multi-register
