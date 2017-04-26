@@ -41,26 +41,24 @@ Your local machine needs a JVM and leiningen 2 installed. Probably want JNA for 
 sudo apt-get install openjdk-8-jre openjdk-8-jre-headless libjna-java
 ```
 
-<<<<<<< HEAD
+
 Gator:
-jdk 8 doesn't work. install Oracle java 8:
-http://link2linux.blogspot.com/2015/07/install-oracle-jdk-8-on-debian-81-jessie.html
+jdk 8 doesn't work. install Oracle java 8:  
+http://link2linux.blogspot.com/2015/07/install-oracle-jdk-8-on-debian-81-jessie.html  
 
 I changed /etc/apt/sourcelst as
- deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main
+ deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main  
+ deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main  
+ deb http://ftp.debian.org/debian/ jessie main non-free  
 
- deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main
+ deb http://security.debian.org/ jessie/updates main contrib  
+ deb-src http://security.debian.org/ jessie/updates main contrib  
 
-deb http://ftp.debian.org/debian/ jessie main non-free
+ for open jdk 1.8, problem with appletviewer  
+ deb http://http.debian.net/debian jessie-backports main  
 
-deb http://security.debian.org/ jessie/updates main contrib
-deb-src http://security.debian.org/ jessie/updates main contrib
-
- for open jdk 1.8, problem with appletviewer
-deb http://http.debian.net/debian jessie-backports main
-
-deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main
-deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main
+ deb http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main  
+ deb-src http://ppa.launchpad.net/webupd8team/java/ubuntu trusty main  
 
 ----------
 this works to install oracle java: apt-get install oracle-java8-installer
@@ -82,18 +80,18 @@ test and know exactly what it's doing.
 
 See [lxc.md](doc/lxc.md) for some of my notes on setting up LXC instances.
 
-You can run your DB nodes as separate physical machines, VMs, LXC instances, or
-via Docker.
+You can run your DB nodes as separate physical machines, VMs, LXC instances, or  
+via Docker.  
 
-- You can launch a complete Jepsen cluster from the [AWS
-  Marketplace](https://aws.amazon.com/marketplace/pp/B01LZ7Y7U0?qid=1486758124485&sr=0-1&ref_=srh_res_product_title).
-  Choose "5+1 node cluster" to get an entire cluster as a Cloudformation stack,
-  with SSH keys and firewall rules preconfigured. Choose "Single AMI" if you'd
-  just like a single node.
+- You can launch a complete Jepsen cluster from the [AWS Marketplace]  
+  (https://aws.amazon.com/marketplace/pp/B01LZ7Y7U0?qid=1486758124485&sr=0-1&ref_=srh_res_product_title).  
+  Choose "5+1 node cluster" to get an entire cluster as a Cloudformation stack,  
+  with SSH keys and firewall rules preconfigured. Choose "Single AMI" if you'd  
+  just like a single node.  
 
 
-- You can also use [Docker Compose](docker /README.md) for setting up Docker instances.
-- The legacy docker in docker is prevered in docker-dind, which works. 
+- You can also use [Docker Compose](docker /README.md) for setting up Docker instances.  
+- The legacy docker in docker is prevered in docker-dind, which works.   
 
 ## Running a test
 
