@@ -4,7 +4,9 @@
 (refer to https://wiki.debian.org/LXC)
 
 ```sh
-aptitude install lxc bridge-utils libvirt-bin debootstrap dnsmasq
+
+aptitude install lxc bridge-utils ebtables libvirt-bin debootstrap dnsmasq
+
 ```
 
 Add this line to /etc/fstab:
@@ -35,6 +37,7 @@ lxc-create -n n4 -t debian -- --release jessie
 lxc-create -n n5 -t debian -- --release jessie
 ```
 
+
 Gators:
 got a dell xps 9350 with nvme ssd, only debian stretch works for xps. 
 
@@ -49,6 +52,9 @@ lxc-create -n n1 -t debian -- --release stretch
 Note the root passwords.
 Each command returns something like "... Root password is 'BUldsMOY', please
 change !". This password will be used when logging into the container later.
+
+Note the root passwords.
+
 
 Edit /var/lib/lxc/n1/config and friends, changing the network hwaddr to something unique. I suggest using sequential mac addresses for n1, n2, n3, ....
 
@@ -129,17 +135,20 @@ Fire up each VM:
 jepsen-start
 ```
 
+
 Make sure all nodes are up
 
 ```sh
 sudo lxc-ls -f
 ```
 
+
 Log into the containers, (may have to specify tty 0 to use console correctly) e.g.,:
 
 ```sh
 lxc-console --name n1 -t 0
 ```
+
 Gators: to get out this 'ctl-a' q, make sure q has no ctl. 
 
 easier (on ubuntu) is lxc-attach -n n1
@@ -158,6 +167,7 @@ And set your root password--I use `root`/`root` by default in Jepsen.
 ```sh
 passwd
 ```
+
 
 Generate and copy your SSH key (on host):
 
@@ -180,6 +190,16 @@ No mistake
 containber has /root/.ssh/authauthorized_keys setup
 ....
 
+kyle's new comment
+Copy your SSH key (on host):
+
+```sh
+cat ~/.ssh/id_rsa.pub
+```
+
+and add it to root's `authorized_keys` (in containers):
+
+
 ```sh
 apt-get install -y sudo vim
 mkdir ~/.ssh
@@ -193,7 +213,12 @@ Enable password-based login for root (used by jsch):
 ```sh
 sed  -i 's,^PermitRootLogin .*,PermitRootLogin yes,g' /etc/ssh/sshd_config
 systemctl restart sshd
+
+apt install sudo
 ```
+
+[Remove systemd](http://without-systemd.org/wiki/index.php/How_to_remove_systemd_from_a_Debian_jessie/sid_installation). After you install sysvinit-core and sysvinit-utils, you may have to restart the container with /lib/sysvinit/init argument to lxc-start before apt will allow you to remove systemd.
+
 
 Detach from the container with Control+a q, and repeat for the remaining nodes.
 
@@ -215,7 +240,8 @@ for n in $(seq 1 5); do ssh-keyscan -t rsa n$n; done >> ~/.ssh/known_hosts
 And check that you can SSH to the nodes
 
 ```sh
-sudo apt-get install clusterssh
+# kyle comments this out sudo apt-get install clusterssh
+
 cssh n1 n2 n3 n4 n5
 ```
 

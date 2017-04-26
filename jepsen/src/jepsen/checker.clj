@@ -17,6 +17,25 @@
                      [history :as history]]
             [knossos.linear.report :as linear.report]))
 
+
+(def valid-priorities
+  "A map of :valid? values to their importance. Larger numbers are considered
+  more signficant and dominate when checkers are composed."
+  {true      0
+   false     1
+   :unknown  0.5})
+
+(defn merge-valid
+  "Merge n :valid values, yielding the one with the highest priority."
+  [valids]
+  (reduce (fn [v1 v2]
+            (if (< (valid-priorities v1)
+                   (valid-priorities v2))
+              v2
+              v1))
+          valids))
+
+
 (defprotocol Checker
   (check [checker test model history opts]
          "Verify the history is correct. Returns a map like
@@ -37,13 +56,16 @@
 (defn check-safe
   "Like check, but wraps exceptions up and returns them as a map like
 
-  {:valid? nil :error \"...\"}"
+
+  {:valid? :unknown :error \"...\"}"
+
   ([checker test model history]
    (check-safe checker test model history {}))
   ([checker test model history opts]
    (try (check checker test model history opts)
         (catch Throwable t
-          {:valid? false
+
+          {:valid? :unknown
            :error (with-out-str (trace/print-cause-trace t))}))))
 
 (def unbridled-optimism
@@ -110,31 +132,33 @@
                           (r/map :value)
                           (reduce (fn [_ x] x) nil))]
         (if-not final-read
-          {:valid? false
-           :error  "Set was never read"})
 
-        (let [; The OK set is every read value which we tried to add
-              ok          (set/intersection final-read attempts)
+          {:valid? :unknown
+           :error  "Set was never read"}
 
-              ; Unexpected records are those we *never* attempted.
-              unexpected  (set/difference final-read attempts)
+          (let [; The OK set is every read value which we tried to add
+                ok          (set/intersection final-read attempts)
 
-              ; Lost records are those we definitely added but weren't read
-              lost        (set/difference adds final-read)
+                ; Unexpected records are those we *never* attempted.
+                unexpected  (set/difference final-read attempts)
 
-              ; Recovered records are those where we didn't know if the add
-              ; succeeded or not, but we found them in the final set.
-              recovered   (set/difference ok adds)]
+                ; Lost records are those we definitely added but weren't read
+                lost        (set/difference adds final-read)
 
-          {:valid?          (and (empty? lost) (empty? unexpected))
-           :ok              (util/integer-interval-set-str ok)
-           :lost            (util/integer-interval-set-str lost)
-           :unexpected      (util/integer-interval-set-str unexpected)
-           :recovered       (util/integer-interval-set-str recovered)
-           :ok-frac         (util/fraction (count ok) (count attempts))
-           :unexpected-frac (util/fraction (count unexpected) (count attempts))
-           :lost-frac       (util/fraction (count lost) (count attempts))
-           :recovered-frac  (util/fraction (count recovered) (count attempts))})))))
+                ; Recovered records are those where we didn't know if the add
+                ; succeeded or not, but we found them in the final set.
+                recovered   (set/difference ok adds)]
+
+            {:valid?          (and (empty? lost) (empty? unexpected))
+             :ok              (util/integer-interval-set-str ok)
+             :lost            (util/integer-interval-set-str lost)
+             :unexpected      (util/integer-interval-set-str unexpected)
+             :recovered       (util/integer-interval-set-str recovered)
+             :ok-frac         (util/fraction (count ok) (count attempts))
+             :unexpected-frac (util/fraction (count unexpected) (count attempts))
+             :lost-frac       (util/fraction (count lost) (count attempts))
+             :recovered-frac  (util/fraction (count recovered) (count attempts))}))))))
+
 
 (defn fraction
   "a/b, but if b is zero, returns unity."
@@ -266,7 +290,9 @@
                          (pmap (fn [[k checker]]
                                  [k (check checker test model history opts)]))
                          (into {}))]
-        (assoc results :valid? (every? :valid? (vals results)))))))
+
+        (assoc results :valid? (merge-valid (map :valid? (vals results))))))))
+
 
 (defn latency-graph
   "Spits out graphs of latencies."

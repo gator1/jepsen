@@ -1,9 +1,15 @@
 (ns jepsen.zookeeper
+
+  (:gen-class)
+
   (:require [avout.core         :as avout]
             [clojure.tools.logging :refer :all]
             [clojure.java.io    :as io]
             [clojure.string     :as str]
             [jepsen [db         :as db]
+
+                    [cli        :as cli]
+
                     [checker    :as checker]
                     [client     :as client]
                     [control    :as c]
@@ -42,31 +48,32 @@
     (setup! [_ test node]
       (c/su
         (info node "installing ZK" version)
-        (info node "zookeeper install:" (debian/install {:zookeeper version
+
+        (debian/install {:zookeeper version
                          :zookeeper-bin version
-                         :zookeeperd version}))
+                         :zookeeperd version})
 
-        (info node "zookeeper myid:" (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid"))
+        (c/exec :echo (zk-node-id test node) :> "/etc/zookeeper/conf/myid")
 
-        (info node "construct zoo.cfg:" (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
+        (c/exec :echo (str (slurp (io/resource "zoo.cfg"))
                            "\n"
                            (zoo-cfg-servers test))
-                :> "/etc/zookeeper/conf/zoo.cfg"))
+                :> "/etc/zookeeper/conf/zoo.cfg")
 
         (info node "ZK restarting")
-        (info node "service zookeeper restart:" (c/exec :service :zookeeper :restart))
+        (c/exec :service :zookeeper :restart)
+
         (info node "ZK ready")))
 
     (teardown! [_ test node]
       (info node "tearing down ZK")
       (c/su
         (c/exec :service :zookeeper :stop)
-        ; Stop seems to fail.
-        (c/exec (c/lit  "ps aux | grep zookeeper | grep -v grep | awk '{ print $2 }' | xargs kill -s kill"))
+
         (c/exec :rm :-rf
                 (c/lit "/var/lib/zookeeper/version-*")
-                (c/lit "/var/log/zookeeper/*")
-                (c/lit "/etc/zookeeper/*"))))
+                (c/lit "/var/log/zookeeper/*"))))
+
 
     db/LogFiles
     (log-files [_ test node]
@@ -105,22 +112,36 @@
       (.close conn))))
 
 (defn zk-test
-  [version]
-  (assoc tests/noop-test
-         :name    "zookeeper"
-         :os      debian/os
-         :db      (db version)
-         :client  (client nil nil)
-         :nemesis (nemesis/partition-random-halves)
-         :generator (->> (gen/mix [r w cas])
-                         (gen/stagger 1)
-                         (gen/nemesis
-                           (gen/seq (cycle [(gen/sleep 5)
-                                            {:type :info, :f :start}
-                                            (gen/sleep 5)
-                                            {:type :info, :f :stop}])))
-                         (gen/time-limit 60))
-         :model   (model/cas-register 0)
-         :checker (checker/compose
-                    {:perf   (checker/perf)
-                     :linear checker/linearizable})))
+
+  "Given an options map from the command-line runner (e.g. :nodes, :ssh,
+  :concurrency, ...), constructs a test map."
+  [opts]
+  (info "Creating test" opts)
+  (merge tests/noop-test
+         opts
+         {:name    "zookeeper"
+          :os      debian/os
+          :db      (db "3.4.5+dfsg-2")
+          :client  (client nil nil)
+          :nemesis (nemesis/partition-random-halves)
+          :generator (->> (gen/mix [r w cas])
+                          (gen/stagger 1)
+                          (gen/nemesis
+                            (gen/seq (cycle [(gen/sleep 5)
+                                             {:type :info, :f :start}
+                                             (gen/sleep 5)
+                                             {:type :info, :f :stop}])))
+                          (gen/time-limit 15))
+          :model   (model/cas-register 0)
+          :checker (checker/compose
+                     {:perf   (checker/perf)
+                      :linear checker/linearizable})}))
+
+(defn -main
+  "Handles command line arguments. Can either run a test, or a web server for
+  browsing results."
+  [& args]
+  (cli/run! (merge (cli/single-test-cmd {:test-fn zk-test})
+                   (cli/serve-cmd))
+           args))
+

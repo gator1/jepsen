@@ -9,6 +9,9 @@
             [clj-time.local :as time.local]
             [clj-time.coerce :as time.coerce]
             [clj-time.format :as time.format]
+
+            [unilog.config :as unilog]
+
             [multiset.core :as multiset]
             [jepsen.util :as util])
   (:import (java.io File)
@@ -23,7 +26,15 @@
 (def base-dir "store")
 
 (def write-handlers
-  (-> {org.joda.time.DateTime
+
+  (-> {clojure.lang.Atom
+       {"atom" (reify WriteHandler
+                 (write [_ w a]
+                   (.writeTag    w "atom" 1)
+                   (.writeObject w @a)))}
+
+       org.joda.time.DateTime
+
        {"date-time" (reify WriteHandler
                       (write [_ w t]
                         (.writeTag    w "date-time" 1)
@@ -64,7 +75,13 @@
       fress/inheritance-lookup))
 
 (def read-handlers
-  (-> {"date-time" (reify ReadHandler
+
+  (-> {"atom"      (reify ReadHandler
+                     (read [_ rdr tag component-count]
+                       (atom (.readObject rdr))))
+
+       "date-time" (reify ReadHandler
+
                      (read [_ rdr tag component-count]
                        (time.format/parse
                          (:basic-date-time time.local/*local-formatters*)
@@ -152,6 +169,17 @@
                                                     :start-time test-time}))]
     (let [in (fress/create-reader file :handlers read-handlers)]
       (fress/read-object in))))
+
+
+(defn load-results
+  "Loads only a results.edn by name and time."
+  [test-name test-time]
+  (with-open [file (java.io.PushbackReader.
+                     (io/reader (path {:name       test-name
+                                       :start-time test-time}
+                                      "results.edn")))]
+    (clojure.edn/read file)))
+
 
 (defn dir?
   "Is this a directory?"
@@ -273,6 +301,32 @@
        dorun)
   (update-symlinks! test)
   test)
+
+
+(def console-appender
+  {:appender :console
+   :pattern "%p\t[%t] %c: %m%n"})
+
+(defn start-logging!
+  "Starts logging to a file in the test's directory."
+  [test]
+  (unilog/start-logging!
+    {:level   "info"
+     :console   false
+     :appenders [console-appender
+                 {:appender :file
+                  :encoder :pattern
+                  :pattern "%d{ISO8601}{GMT}\t%p\t[%t] %c: %m%n"
+                  :file (.getCanonicalPath (path! test "jepsen.log"))}]}))
+
+(defn stop-logging!
+  "Resets logging to console only."
+  []
+  (unilog/start-logging!
+    {:level "info"
+     :console   false
+     :appenders [console-appender]}))
+
 
 (defn delete-file-recursively!
   [^File f]

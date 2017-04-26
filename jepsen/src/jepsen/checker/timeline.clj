@@ -4,7 +4,9 @@
             [clojure.string :as str]
             [hiccup.core :as h]
             [knossos.history :as history]
-            [jepsen.util :as util]
+
+            [jepsen.util :as util :refer [name+]]
+
             [jepsen.store :as store]
             [jepsen.checker :as checker]))
 
@@ -72,10 +74,13 @@
 
                                true
                                (assoc s :height height)))
-           :title (when stop (str (long (util/nanos->ms
-                                          (- (:time stop) (:time start))))
-                                  " ms"))}
-     (str (:process op) " " (name (:f op)) " " (:value start)
+
+           :title (str (when stop (str (long (util/nanos->ms
+                                               (- (:time stop) (:time start))))
+                                       " ms\n"))
+                       (pr-str (:error op)))}
+     (str (:process op) " " (name+ (:f op)) " " (:value start)
+
           (when (not= (:value start) (:value stop))
             (str "<br />" (:value stop))))]))
 

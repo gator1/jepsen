@@ -74,7 +74,9 @@
   sole top-level directory to the given dest directory. Deletes
   current contents of dest. Returns dest."
   ([node url dest]
-   (node url dest false))
+
+   (install-tarball! node url dest false))
+
   ([node url dest force?]
    (let [local-file (nth (re-find #"file://(.+)" url) 1)
          file       (or local-file
@@ -151,12 +153,18 @@
 
   :logfile
   :pidfile
+
+  :remove-pidfile?
+
   :chdir"
   [opts bin & args]
   (info "starting" (.getName (file bin)))
   (apply exec :start-stop-daemon :--start
          :--background
          :--make-pidfile
+
+         (when (:remove-pidfile? opts true) :--remove-pidfile)
+
          :--pidfile  (:pidfile opts)
          :--chdir    (:chdir opts)
          :--no-close

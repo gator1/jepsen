@@ -24,12 +24,104 @@
             [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :refer [info warn]]
             [knossos.op           :as op])
-  (:import (io.crate.client CrateClient)
+
+  (:import (java.net InetAddress)
+           (io.crate.client CrateClient)
            (io.crate.action.sql SQLActionException
                                 SQLResponse
                                 SQLRequest)
-           (io.crate.shade.org.elasticsearch.client.transport
-             NoNodeAvailableException)))
+           (org.elasticsearch.common.unit TimeValue)
+           (org.elasticsearch.common.settings
+             Settings)
+           (org.elasticsearch.common.transport
+             InetSocketTransportAddress)
+           (org.elasticsearch.client.transport
+             TransportClient)))
+
+(defn map->kw-map
+  "Turns any map into a kw-keyed persistent map."
+  [x]
+  (condp instance? x
+    java.util.Map
+    (reduce (fn [m pair]
+              (assoc m (keyword (key pair)) (val pair)))
+            {}
+            x)
+
+    java.util.List
+    (map map->kw-map x)
+
+    true
+    x))
+
+;; ES client
+
+(defn es-connect
+  "Open an elasticsearch connection to a node."
+  [node]
+  (-> (TransportClient/builder)
+      (.settings (-> (Settings/settingsBuilder)
+                     (.put "cluster.name" "crate")
+                     (.put "client.transport.sniff" false)
+                     (.build)))
+      (.build)
+      (.addTransportAddress (InetSocketTransportAddress.
+                              (InetAddress/getByName (name node))
+                              4300))))
+
+(defn es-index!
+  "Index a record"
+  [^TransportClient client index type doc]
+  (assert (:id doc))
+  (let [res (-> client
+                (.prepareIndex index type (str (:id doc)))
+                (.setSource (json/generate-string doc))
+                (.get))]; why not execute/actionGet?
+    (when-not (.isCreated res)
+      (throw (RuntimeException. "Document not created")))
+    res))
+
+(defn es-get
+  "Get a record by ID. Returns nil when record does not exist."
+  [^TransportClient client index type id]
+  (let [res (-> client
+                (.prepareGet index type (str id))
+                (.get))]
+    (when (.isExists res)
+      {:index   (.getIndex res)
+       :type    (.getType res)
+       :id      (.getId res)
+       :version (.getVersion res)
+       :source  (map->kw-map (.getSource res))})))
+
+(defn es-search
+  [^TransportClient client]
+  (loop [results []
+         scroll  (-> client
+                    (.prepareSearch (into-array String []))
+                    (.setScroll (TimeValue. 60000))
+                    (.setSize 128)
+                    (.execute)
+                    (.actionGet))]
+    (let [hits (.getHits (.getHits scroll))]
+      (if (zero? (count hits))
+        ; Done
+        results
+
+        (recur
+          (->> hits
+               seq
+               (map (fn [hit]
+                      {:id      (.id hit)
+                       :version (.version hit)
+                       :source  (map->kw-map (.getSource hit))}))
+               (into results))
+          (-> client
+              (.prepareSearchScroll (.getScrollId scroll))
+              (.setScroll (TimeValue. 60000))
+              (.execute)
+              (.actionGet)))))))
+
 
 ;; Client
 (defn connect
@@ -68,7 +160,7 @@
            (with-retry []
              (sql! client "select * from sys.nodes")
              client
-             (catch NoNodeAvailableException e
+             (catch io.crate.shade.org.elasticsearch.client.transport.NoNodeAvailableException e
                (Thread/sleep 1000)
                (retry)))))
 
@@ -85,7 +177,7 @@
           (c/exec :apt-key :add "DEB-GPG-KEY-crate")
           (c/exec :rm "DEB-GPG-KEY-crate"))
     (debian/add-repo! "crate" "deb https://cdn.crate.io/downloads/apt/stable/ jessie main")
-    (debian/install [:crate])
+    (debian/install {:crate "0.55.2-1~jessie"})
     (c/exec :update-rc.d :crate :disable))
   (info node "crate installed"))
 
@@ -136,6 +228,32 @@
     db/LogFiles
     (log-files [_ test node]
       ["/var/log/crate/crate.log"])))
+
+
+(defmacro with-errors
+  "Unified error handling: takes an operation, evaluates body in a try/catch,
+  and maps common exceptions to short errors."
+  [op & body]
+  `(try ~@body
+        (catch SQLActionException e#
+          (cond
+            (and (= 5000 (.errorCode e#))
+                 (re-find #"blocked by: \[.+no master\];" (str e#)))
+            (assoc ~op :type :fail, :error :no-master)
+
+            (and (= 4091 (.errorCode e#))
+                 (re-find #"document with the same primary key" (str e#)))
+            (assoc ~op :type :fail, :error :duplicate-key)
+
+            (and (= 5000 (.errorCode e#))
+                 (re-find #"rejected execution" (str e#)))
+            (do ; Back off a bit
+                (Thread/sleep 1000)
+                (assoc ~op :type :info, :error :rejected-execution))
+
+            :else
+            (throw e#)))))
+
 
 (defn client
   ([] (client nil))

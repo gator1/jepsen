@@ -33,8 +33,11 @@
 
 (defn split-one
   "Split one node off from the rest"
-  [coll]
-  (let [loner (rand-nth coll)]
+
+  ([coll]
+   (split-one (rand-nth coll) coll))
+  ([loner coll]
+
     [[loner] (remove (fn [x] (= x loner)) coll)]))
 
 (defn complete-grudge
@@ -177,13 +180,15 @@
 
     (invoke! [this test op]
       (assoc op :value
-                (c/on-many (:nodes test)
-                           (set-time! (+ (/ (System/currentTimeMillis) 1000)
-                                         (- (rand-int (* 2 dt)) dt))))))
+
+             (c/with-test-nodes test
+               (set-time! (+ (/ (System/currentTimeMillis) 1000)
+                             (- (rand-int (* 2 dt)) dt))))))
 
     (teardown! [this test]
-      (c/on-many (:nodes test)
-                 (set-time! (/ (System/currentTimeMillis) 1000))))))
+      (c/with-test-nodes test
+        (set-time! (/ (System/currentTimeMillis) 1000))))))
+
 
 (defn node-start-stopper
   "Takes a targeting function which, given a list of nodes, returns a single

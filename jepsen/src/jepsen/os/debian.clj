@@ -28,7 +28,8 @@
   "When did we last run an apt-get update, in seconds ago"
   []
   (- (Long/parseLong (c/exec :date "+%s"))
-     (Long/parseLong (c/exec :stat :-c "%Y" "/var/cache/apt/pkgcache.bin"))))
+     (Long/parseLong (c/exec :stat :-c "%Y" "/var/cache/apt/pkgcache.bin" "||" :echo 0))))
+
 
 (defn update!
   "Apt-get update."
@@ -95,7 +96,9 @@
       (when-not (empty? missing)
         (c/su
           (info "Installing" missing)
-          (apply c/exec :apt-get :install :-y missing))))))
+
+          (apply c/exec :apt-get :install :-y :--force-yes missing))))))
+
 
 (defn add-key!
   "Receives an apt key from the given keyserver."
@@ -144,27 +147,27 @@
       (maybe-update!)
 
       (c/su
-       ; Install new init before removing current one
-       (install [:sysvinit-core])
-
-       ; Fucking systemd (current init system) breaks a bunch of packages (so remove it)
-       (if (installed? :systemd)
-         (c/exec :apt-get :remove :-y :--purge :--auto-remove :systemd)))
 
         ; Packages!
         (install [:wget
-                  :sysvinit
-                  :sysvinit-utils
+
                   :curl
                   :vim
                   :man-db
                   :faketime
+
+                  :ntpdate
                   :unzip
                   :iptables
                   :psmisc
+                  :tar
+                  :bzip2
+                  :libzip2
                   :iputils-ping
+                  :iproute
                   :rsyslog
-                  :logrotate])
+                  :logrotate]))
+
 
       (meh (net/heal)))
 

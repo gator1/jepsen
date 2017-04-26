@@ -3,7 +3,9 @@
             [jepsen.core :as jepsen]
             [jepsen.postgres-rds :refer [bank-test]]))
 
-(def node "localhost")
+
+(def node "jepsen.ciudayaehbts.us-west-2.rds.amazonaws.com")
+
 
 (deftest bank-test'
   (is (:valid? (:results (jepsen/run! (bank-test

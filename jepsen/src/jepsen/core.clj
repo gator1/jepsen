@@ -19,6 +19,9 @@
             [clojure.pprint :refer [pprint]]
             [knossos.core :as knossos]
             [jepsen.util :as util :refer [with-thread-name
+
+                                          fcatch
+
                                           real-pmap
                                           relative-time-nanos]]
             [jepsen.os :as os]
@@ -48,13 +51,6 @@
   [test]
   (first (:nodes test)))
 
-(defn fcatch
-  "Takes a function and returns a version of it which returns, rather than
-  throws, exceptions."
-  [f]
-  (fn wrapper [& args]
-    (try (apply f args)
-         (catch Exception e e))))
 
 (defmacro with-resources
   "Takes a four-part binding vector: a symbol to bind resources to, a function
@@ -171,7 +167,14 @@
                                        (assoc :time (relative-time-nanos)))]
                     (util/log-op completion)
 
-                    ; Sanity check
+
+                    ; Sanity checks
+                    (let [t (:type completion)]
+                      (assert (or (= t :ok)
+                                  (= t :fail)
+                                  (= t :info))
+                              (str "Expected client/invoke! to return a map with :type :ok, :fail, or :info, but received " (pr-str completion) " instead")))
+
                     (assert (= (:process op) (:process completion)))
                     (assert (= (:f op)       (:f completion)))
 
@@ -318,31 +321,17 @@
   "Logs info about the results of a test to stdout, and returns test."
   [test]
   (info (str
-          (if (:valid? (:results test))
-            "Everything looks good! ヽ(‘ー`)ノ"
-            "Analysis invalid! (ﾉಥ益ಥ）ﾉ ┻━┻")
-          "\n\n"
+
           (with-out-str
             (pprint (:results test)))
           (when (:error (:results test))
-            (str "\n\n" (:error (:results test))))))
+            (str "\n\n" (:error (:results test))))
+          "\n\n"
+          (if (:valid? (:results test))
+            "Everything looks good! ヽ(‘ー`)ノ"
+            "Analysis invalid! (ﾉಥ益ಥ）ﾉ ┻━┻")))
   test)
 
-(defn analyze [test]
-  (let [res (atom test)
-        _ (info "Analyzing...")
-        runtime (with-out-str (time (swap! res assoc :results (checker/check-safe
-                                                               (:checker test)
-                                                               test
-                                                               (:model test)
-                                                               (:history test)))))]
-    (info (format "Analysis complete. %s" runtime))
-    @res))
-
-(defn analyze! [test test-dir]
-  (let [history (util/read-history (format "%s/history.txt" test-dir))]
-    (log-results (with-thread-name "jepsen analysis runner"
-                   (analyze (assoc test :history history))))))
 
 (defn run!
   "Runs a test. Tests are maps containing
@@ -393,48 +382,61 @@
      the history
     - This generates the final report"
   [test]
-  (log-results
-    (with-thread-name "jepsen test runner"
-      (let [test (assoc test
-                        ; Initialization time
-                        :start-time (util/local-time)
 
-                        ; Number of concurrent workers
-                        :concurrency (or (:concurrency test)
-                                         (count (:nodes test)))
+  (try
+    (log-results
+      (with-thread-name "jepsen test runner"
+        (let [test (assoc test
+                          ; Initialization time
+                          :start-time (util/local-time)
 
-                        ; Synchronization point for nodes
-                        :barrier (let [c (count (:nodes test))]
-                                   (if (pos? c)
-                                     (CyclicBarrier. (count (:nodes test)))
-                                     ::no-barrier))
-                        ; Currently running histories
-                        :active-histories (atom #{}))
-            test (control/with-ssh (:ssh test)
-                   (with-resources [sessions
-                                    (bound-fn* control/session)
-                                    control/disconnect
-                                    (:nodes test)]
-                     ; Index sessions by node name and add to test
-                     (let [test (->> sessions
-                                     (map vector (:nodes test))
-                                     (into {})
-                                     (assoc test :sessions))]
-                       ; Setup
-                       (with-os test
-                         (with-db test
-                           (generator/with-threads (cons :nemesis
-                                                         (range (:concurrency test)))
-                             (util/with-relative-time
-                               ; Run a single case
-                               (let [test (assoc test :history (run-case! test))
-                                     ; Remove state
-                                     test (dissoc test
-                                                  :barrier
-                                                  :active-histories
-                                                  :sessions)]
-                                 (info "Run complete, writing")
-                                 (when (:name test) (store/save-1! test))
-                                 test))))))))
-            test (analyze test)]
-        (when (:name test) (store/save-2! test))))))
+                          ; Number of concurrent workers
+                          :concurrency (or (:concurrency test)
+                                           (count (:nodes test)))
+
+                          ; Synchronization point for nodes
+                          :barrier (let [c (count (:nodes test))]
+                                     (if (pos? c)
+                                       (CyclicBarrier. (count (:nodes test)))
+                                       ::no-barrier))
+                          ; Currently running histories
+                          :active-histories (atom #{}))
+              _    (store/start-logging! test)
+              test (control/with-ssh (:ssh test)
+                     (with-resources [sessions
+                                      (bound-fn* control/session)
+                                      control/disconnect
+                                      (:nodes test)]
+                       ; Index sessions by node name and add to test
+                       (let [test (->> sessions
+                                       (map vector (:nodes test))
+                                       (into {})
+                                       (assoc test :sessions))]
+                         ; Setup
+                         (with-os test
+                           (with-db test
+                             (generator/with-threads
+                               (cons :nemesis (range (:concurrency test)))
+                               (util/with-relative-time
+                                 ; Run a single case
+                                 (let [test (assoc test :history (run-case! test))
+                                       ; Remove state
+                                       test (dissoc test
+                                                    :barrier
+                                                    :active-histories
+                                                    :sessions)]
+                                   (info "Run complete, writing")
+                                   (when (:name test) (store/save-1! test))
+                                   test))))))))
+              _ (info "Analyzing")
+              test (assoc test :results (checker/check-safe
+                                          (:checker test)
+                                          test
+                                          (:model test)
+                                          (:history test)))]
+
+          (info "Analysis complete")
+          (when (:name test) (store/save-2! test)))))
+    (finally
+      (store/stop-logging!))))
+
