@@ -34,6 +34,7 @@
                                                    relative-time-nanos]]
                       ]
              [jepsen.control :as c :refer  [|]]
+             [jepsen.checker.timeline :as timeline]
              [knossos.op :as op]
              [jepsen.control.util :as cu]
              [jepsen.zookeeper :as zk]
@@ -46,21 +47,17 @@
 (defn topic-status [node]
   (c/on node (info node "kafka-topics.sh --describe:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic " topic))))))
 
+(defn list-topic []
+      (info "kafka-topics.sh --list:" (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181"))))
+
 (defn create-topic
   [node]
   (Thread/sleep 20)
   (info "creating topic")
-  ; Delete it if it exists
-  (try
-    (info "kafka-topics.sh --delete:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic " topic))))
-    (Thread/sleep 20)
-    (catch Exception e
-      (info "Didn't need to delete old topic.")
-      ))
   (info "kafka-topics.sh --create:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 5 --topic " topic
                                                           " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
                                                           ))))
-  (info "kafka-topics.sh --list:" (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
+  (list-topic)
   (topic-status node)
   (info "creating topic done")
 )
@@ -153,11 +150,14 @@
   (c/exec :service :zookeeper :restart)
   (info node "ZK ready"))
 
+(defn get-node-id [node]
+      (Integer.  (re-find #"\d+", (name node))))
+
 (defn install! [node sversion kversion]
    ; Install specific versions
   (info "install! Kafka begins" node )
   ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
-  (let [id  (Integer.  (re-find #"\d+", (name node)))
+  (let [id  (get-node-id node)
         ;kafka "kafka_2.11-0.10.0.1"
         kafka (format "kafka_%s-%s" sversion kversion)
         ]
@@ -224,7 +224,7 @@
             message (first cr)
             value (:value message)]
            (if (nil? message)
-             (assoc op :type :fail, :value :exhausted, :debug {:node node})
+             (assoc op :type :fail, :error :exhausted, :debug {:node node})
              (do
                ;(println "message:" message)
                (gregor/commit-offsets! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}])
@@ -233,16 +233,38 @@
      (catch Exception e
        ;(pst e 25)
        ; Exception is probably timeout variant
-       (info (str "Dequeue exception: " (.getMessage e) e))
-       (assoc op :type :fail :value :timeout :debug {:node node}))
+       ;(info (str "Dequeue exception: " (.getMessage e) e))
+       (assoc op :type :fail :error (.getMessage e) :debug {:node node}))
      (finally (gregor/close c)))))
+
+(defn drain! [client queue op]
+  (let [node (:node client)
+        c (consumer node queue)]
+       (try
+         (timeout 10000 (assoc op :type :ok, :value :exhausted, :debug {:node node})
+            (let [cr (gregor/poll c 5000)
+                  message (last cr)]
+                 (if (nil? message)
+                   (assoc op :type :ok, :value :exhausted, :debug {:node node})
+                   (do
+                     ;(println "message:" message)
+                     (timeout 5000 (gregor/commit-offsets-async! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}]))
+                     ; If this fails, we will throw an exception and return timeout.  That way we don't consume it.
+                     (assoc op :type :ok :value :exhausted :debug {:node node :partition (:partition message) :offset (:offset message)}))))
+                  )
+         (catch Exception e
+           ;(pst e 25)
+           ; Exception is probably timeout variant
+           (info (str "Dequeue exception: " (.getMessage e) e))
+           (assoc op :type :ok :value :exhausted :debug {:node node}))
+         (finally (gregor/close c)))))
 
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
   [client queue op]
   (timeout 10000
-           (assoc op :type :fail :value :timeout :debug {:node (:node client)})
+           (assoc op :type :fail :error :timeout :debug {:node (:node client)})
            (dequeue-only! op (:node client) queue)))
 
 (defn enqueue-only! [node queue value]
@@ -253,17 +275,17 @@
       (deref (gregor/send p queue (str value)))
       (gregor/flush p)
      (catch Exception e
-       (info (str "Enqueue exception: " (.getMessage e) e))
+       ;(info (str "Enqueue exception: " (.getMessage e) e))
        (throw e))
      (finally (gregor/close p)))))
 
 (defn enqueue! [client queue op]
   (try
-    (timeout 10000  (assoc op :type :info, :value :timeout, :debug {:node (:node client)})
+    (timeout 10000  (assoc op :type :fail, :error :timeout, :debug {:node (:node client)})
              (enqueue-only! (:node client) queue (:value op))
              (assoc op :type :ok :debug {:node (:node client)}))
     (catch Exception e
-      (assoc op :type :info, :value :timeout))))
+      (assoc op :type :fail, :error (.getMessage e)))))
 
 (defrecord Client [client queue]
   client/Client
@@ -279,24 +301,32 @@
 
   (invoke!  [this test op]
      (case  (:f op)
-         :enqueue (do ;(topic-status (:node client))
+         :enqueue (do ;(info "enqueue test");(topic-status (:node client))
                       (enqueue! client queue op))
          :dequeue  (do ;(topic-status (:node client))
+                     ;(info "dequeue test")
                        (dequeue! client queue op))
-         :drain  (do
-                   ; Note that this does more dequeues than strictly necessary
-                   ; owing to lazy sequence chunking.
-                   (->> (repeat op)                  ; Explode drain into
-                        (map #(assoc % :f :dequeue)) ; infinite dequeues, then
-                        (map (partial dequeue! client queue))  ; dequeue something
-                        (take-while op/ok?)  ; as long as stuff arrives,
-                        (interleave (repeat op))     ; interleave with invokes
-                        (drop 1)                     ; except the initial one
-                        (map (fn [completion]
-                                 (log-op completion)
-                                 (jepsen/conj-op! test completion)))
-                        dorun)
-                   (assoc op :type :ok :value :exhausted))
+         :drain    (drain! client queue op)
+            (comment (timeout 10000 (assoc op :type :info :value :timeout)
+                     (loop []
+                           (let [op' (->> (assoc op
+                                                 :f    :dequeue
+                                                 :time (relative-time-nanos))
+                                          util/log-op
+                                          ;(jepsen/conj-op! test)
+                                          (dequeue!
+                                            client queue client-timeout))]
+                                ; Log completion
+                                (->> (assoc op' :time (relative-time-nanos))
+                                     util/log-op
+                                     (jepsen/conj-op! test))
+
+                                (if (= :fail (:type op'))
+                                  ; Done
+                                  (assoc op :type :ok, :value :exhausted)
+
+                                  ; Keep going.
+                                  (recur))))))
          ))
   )
 
@@ -361,7 +391,9 @@
              :model   (model/unordered-queue)
              :nemesis (nemesis/partition-random-halves)
              :checker    (checker/compose
-                            {:queue       checker/queue
+                            {:timeline    (timeline/html)
+                             :checker     (checker/perf)
+                             :queue       checker/queue
                             :total-queue checker/total-queue})
              :generator  gen1
       ))
