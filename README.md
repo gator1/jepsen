@@ -46,7 +46,7 @@ Gator:
 jdk 8 doesn't work. install Oracle java 8:  
 http://link2linux.blogspot.com/2015/07/install-oracle-jdk-8-on-debian-81-jessie.html  
 
-I changed /etc/apt/sourcelst as
+I changed /etc/apt/sourcelst as  
  deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main  
  deb cdrom:[Debian GNU/Linux 8.3.0 _Jessie_ - Official amd64 DVD Binary-1 20160123-19:03]/ jessie contrib main  
  deb http://ftp.debian.org/debian/ jessie main non-free  
@@ -125,6 +125,8 @@ reimplement Jepsen's ideas in a language you *do* know. Either way's fine!
 
 For a complete guide to writing a test, start with
 [scaffolding](doc/scaffolding.md).
+The above scaffolding is the new one for etcd. Here is the initial one with
+zookeeper [scaffoldingi_zk](doc/scaffolding_zk.md)
 
 ## FAQ
 
