@@ -28,6 +28,12 @@ RUN wget https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein
     chmod +x /usr/bin/lein && \
     lein self-install
 
+RUN cd / && \
+    git clone https://github.com/ceph/ceph-ansible.git
+
+RUN cd /root && \
+    mkdir test-cluster
+
 # You need to locate jepsen in this directory (up.sh does that automatically)
 ADD jepsen /jepsen
 RUN cd /jepsen/jepsen && lein install
