@@ -237,8 +237,27 @@
        (assoc op :type :fail :error (.getMessage e) :debug {:node node}))
      (finally (gregor/close c)))))
 
-(defn drain! [op node queue]
-      )
+(defn drain! [client queue op]
+  (let [node (:node client)
+        c (consumer node queue)]
+       (try
+         (timeout 10000 (assoc op :type :ok, :value :exhausted, :debug {:node node})
+            (let [cr (gregor/poll c 5000)
+                  message (last cr)]
+                 (if (nil? message)
+                   (assoc op :type :ok, :value :exhausted, :debug {:node node})
+                   (do
+                     ;(println "message:" message)
+                     (timeout 5000 (gregor/commit-offsets-async! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}]))
+                     ; If this fails, we will throw an exception and return timeout.  That way we don't consume it.
+                     (assoc op :type :ok :value :exhausted :debug {:node node :partition (:partition message) :offset (:offset message)}))))
+                  )
+         (catch Exception e
+           ;(pst e 25)
+           ; Exception is probably timeout variant
+           (info (str "Dequeue exception: " (.getMessage e) e))
+           (assoc op :type :ok :value :exhausted :debug {:node node}))
+         (finally (gregor/close c)))))
 
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
@@ -287,39 +306,27 @@
          :dequeue  (do ;(topic-status (:node client))
                      ;(info "dequeue test")
                        (dequeue! client queue op))
-         :drain    (loop []
-                               (let [op' (->> (assoc op
-                                                     :f    :dequeue
-                                                     :time (relative-time-nanos))
-                                              util/log-op
-                                              (jepsen/conj-op! test)
-                                              (dequeue! client queue))]
-                                    ; Log completion
-                                    (->> (assoc op' :time (relative-time-nanos))
-                                         util/log-op
-                                         (jepsen/conj-op! test))
+         :drain    (drain! client queue op)
+            (comment (timeout 10000 (assoc op :type :info :value :timeout)
+                     (loop []
+                           (let [op' (->> (assoc op
+                                                 :f    :dequeue
+                                                 :time (relative-time-nanos))
+                                          util/log-op
+                                          ;(jepsen/conj-op! test)
+                                          (dequeue!
+                                            client queue client-timeout))]
+                                ; Log completion
+                                (->> (assoc op' :time (relative-time-nanos))
+                                     util/log-op
+                                     (jepsen/conj-op! test))
 
-                                    (if (= :fail (:type op'))
-                                      ; Done
-                                      (assoc op :type :ok, :value :exhausted)
+                                (if (= :fail (:type op'))
+                                  ; Done
+                                  (assoc op :type :ok, :value :exhausted)
 
-                                      ; Keep going.
-                                      (recur))))
-
-            (comment (do
-                   ; Note that this does more dequeues than strictly necessary
-                   ; owing to lazy sequence chunking.
-                   (->> (repeat op)                  ; Explode drain into
-                        (map #(assoc % :f :dequeue)) ; infinite dequeues, then
-                        (map (partial dequeue! client queue))  ; dequeue something
-                        (take-while op/ok?)  ; as long as stuff arrives,
-                        (interleave (repeat op))     ; interleave with invokes
-                        (drop 1)                     ; except the initial one
-                        (map (fn [completion]
-                                 (log-op completion)
-                                 (jepsen/conj-op! test completion)))
-                        dorun)
-                   (assoc op :type :ok :value :exhausted)))
+                                  ; Keep going.
+                                  (recur))))))
          ))
   )
 
