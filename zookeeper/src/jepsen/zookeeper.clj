@@ -121,7 +121,7 @@
          opts
          {:name    "zookeeper"
           :os      debian/os
-          :db      (db "3.4.5+dfsg-2")
+          :db      (db "3.4.5+dfsg-2+deb8u1")
           :client  (client nil nil)
           :nemesis (nemesis/partition-random-halves)
           :generator (->> (gen/mix [r w cas])
