@@ -1,9 +1,12 @@
 (ns block-s.core
+
+  ;(:gen-class)
   (:require [clojure.tools.logging :refer :all]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [jepsen [core :as jepsen]
+             [cli :as cli]
              [db :as db]
              [control :as c]
              [client :as client]
@@ -18,8 +21,8 @@
 
 
 ; define disk device, sector
-(def fsdev "/home/gary/jepsen/block-s/data/testdev")
-(def data "/home/gary/jepsen/block-s/data/temp")
+(def fsdev "/jepsen/block-s/data/testdev")
+(def data "/jepsen/block-s/data/temp")
 (def offset 0)
 
 ; define host sudo password and primary node ip
@@ -278,7 +281,18 @@
     (check [_ test model history opts]
       (merge {:valid? true} (check-blk history)))))
 
+(defn block-test
+  "Given an options map from the command line runner (e.g. :nodes, :ssh,
+  :concurrency, ...), constructs a test map."
+  [opts]
+  (merge tests/noop-test
+         {}))
+
 ; main entry
 (defn -main
-  "Test entry."
-  [])
+  "Handles command line arguments. Can either run a test, or a web server for
+  browsing results."
+  [& args]
+  (cli/run! (merge (cli/single-test-cmd {:test-fn block-test})
+                   (cli/serve-cmd))
+            args))
