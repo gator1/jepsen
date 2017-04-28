@@ -4,6 +4,7 @@
             [jepsen.core :as jepsen]
             [jepsen.tests :as tests]
             [jepsen.checker :as checker]
+            [jepsen.checker.timeline :as timeline]
             [jepsen.generator :as gen])
   (:use     clojure.tools.logging))
 
@@ -29,7 +30,10 @@
                  (gen/log "waiting for recover")
                  (gen/sleep 5)
                  (gen/clients (gen/once r)))
-    :checker checker/counter))
+    :checker   (checker/compose
+               {:timeline    (timeline/html)
+                :perf        (checker/perf)
+                :counter     checker/counter})))
 
 ; block client-server consistency testing on register write
 (deftest fscs-test-reg

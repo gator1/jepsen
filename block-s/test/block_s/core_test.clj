@@ -6,6 +6,7 @@
             [jepsen.checker :as checker]
             [jepsen.tests :as tests]
             [jepsen.nemesis :as nemesis]
+            [jepsen.checker.timeline :as timeline]
             [knossos.model :refer [cas-register]])
   (:use     clojure.tools.logging))
 
@@ -25,11 +26,10 @@
                                        {:type :info, :f :stop}])))
                     (gen/time-limit 15))
     :model (cas-register 0)
-    :checker checker/linearizable)
-    ;:checker (checker/compose
-     ;          {:perf   (checker/perf)
-      ;          :linear checker/linearizable}))
-  )
+    :checker   (checker/compose
+               {:timeline    (timeline/html)
+                :perf        (checker/perf)
+                :linear     checker/linearizable})))
 
 ; block consistency testing
 (deftest fscp-test

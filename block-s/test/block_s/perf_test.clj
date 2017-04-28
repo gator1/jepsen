@@ -2,6 +2,8 @@
   (:require [clojure.test :refer :all]
             [block-s.core :refer :all]
             [jepsen.core :as jepsen]
+            [jepsen.checker :as checker]
+            [jepsen.checker.timeline :as timeline]
             [jepsen.generator :as gen]
             [jepsen.tests :as tests])
   (:use     clojure.tools.logging))
@@ -23,8 +25,10 @@
                                        (gen/sleep t2)
                                        {:type :info, :f :stop}])))
                     (op-limit 20))
-    :checker perf-checker)
-  )
+    :checker   (checker/compose
+               {:timeline    (timeline/html)
+                :perf        (checker/perf)
+                :counter     perf-checker})))
 
 ; block performance testing
 ; testcase 0: no network partition
