@@ -81,5 +81,5 @@ INFO "Running \`docker-compose build\`"
 docker-compose build
 
 INFO "Running \`docker-compose up\`"
-INFO "Please run \`docker exec -it jepsen-control bash\` in another terminal to proceed"
+INFO "Please run \`docker exec -it jepsen-control-kafka bash\` in another terminal to proceed"
 docker-compose up
