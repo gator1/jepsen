@@ -1,6 +1,7 @@
 (ns file-e.nemesis
   (:require [clojure.tools.logging :refer :all]
-            [file-e.core :refer :all]
+            ;[file-e.core :refer :all]
+            [file-e.util :as util]
             [jepsen [core :as jepsen]
              [client :as client]
              [nemesis :as nemesis]
@@ -83,9 +84,9 @@
     (invoke! [this test op]
       (case (:f op)
         :start (let [node (+ 1 (rand-int 3))
-                     loc  (location node)
+                     loc  (util/location node)
                      v (+ 5 (rand-int 5))]
-                 (set-reg loc v)
+                 (util/set-reg loc v)
                  (assoc op :value (str "Write " v " into " loc)))
         :stop  (assoc op :value (str "stop nemesis-test-1 >>>>> "))))
     (teardown! [this test] this)))

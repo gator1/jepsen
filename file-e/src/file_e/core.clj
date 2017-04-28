@@ -1,34 +1,32 @@
 (ns file-e.core
+  (:gen-class)
   (:require [clojure.tools.logging :refer :all]
             [jepsen [core :as jepsen]
              [client :as client]
              [nemesis :as nemesis]
              [generator :as gen]
              [checker :as checker]
+             [cli        :as cli]
              [control :as c]
              [tests :as tests]
              [independent :as independent]
              [util :refer [timeout]]]
             [knossos.model :refer [cas-register]]
             [knossos.history :as history]
+            [knossos.model :refer [cas-register, multi-register]]
+            [jepsen.checker.timeline :as timeline]
+            [file-e.net :as net]
+            [file-e.nemesis :as nemesis0]
+            [file-e.util :as util]
             [clojure.edn :as edn])
   (:use     [clojure.java.shell :only [sh]]) )
 
-; define path
-;(def ^:private file-path "/home/gary/mike/gator1/jepsen/file-e/mount/n")
-(def ^:private file-path "mount/n")
 (def ^:private temp-path "/home/gary/mike/gator1/jepsen/file-e/data/")
 
 ; define operations
 (defn r   [_ _] {:type :invoke, :f :read, :value nil})
 (defn w   [_ _] {:type :invoke, :f :write, :value (rand-int 5)})
 (defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5)(rand-int 5)]})
-
-(defn nid
-  [n]
-  (->> (str n)
-    (re-find #"\d+")
-    (Integer. )))
 
 (defn get-reg
   [loc]
@@ -38,22 +36,13 @@
 ;      :out
 ;      edn/read-string)))
 
-(defn set-reg
-  [loc val]
-  (spit loc val))
-;  (sh "sh" "-c" (str "echo " val " > " loc)))
-
-(defn location
-  [n]
-  (str file-path (nid n) "/data"))
-
 ; client for nfs based
 (defn client-nfs
   [loc]
   (reify client/Client
     (setup! [_ test node]
-      (let [loc (location node)]
-        (set-reg loc 0)
+      (let [loc (util/location node)]
+        (util/set-reg loc 0)
         (client-nfs loc)))
     
     (invoke! [this test op]
@@ -61,12 +50,12 @@
                (case (:f op)
                  :read  (assoc op :type :ok, :value (get-reg loc))
                  
-                 :write (do (set-reg loc (:value op))
+                 :write (do (util/set-reg loc (:value op))
                           (assoc op :type :ok))
                  
                  :cas   (let [[value value'] (:value op)]
                           (if (= (get-reg loc) value)
-                            (do (set-reg loc value')
+                            (do (util/set-reg loc value')
                               (assoc op :type :ok))
                             (assoc op :type :fail))))))
     
@@ -90,7 +79,7 @@
 (defn get-multi-data
   [n key]
   (let [temp (str temp-path "temp" n)
-        data (str file-path n "/data")
+        data (str util/file-path n "/data")
         pos (* skip-size (- (/ key 10) 1))]
     
     (let [ret (->> (str "cat " temp)
@@ -102,7 +91,7 @@
 (defn set-multi-data
   [n key val]
   (let [temp (str temp-path "temp" n)
-        data (str file-path n "/data")
+        data (str util/file-path n "/data")
         pos (* skip-size (- (/ key 10) 1))]
     ;    (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 oflag=direct conv=notrunc")
     (let [ret (->> (str "dd if=" temp " of=" data " seek=" pos " count=1 conv=notrunc")
@@ -112,7 +101,7 @@
 
 (defn init-multi-data
   [n count]
-  (let [data (str file-path n "/data")]
+  (let [data (str util/file-path n "/data")]
     (sh "sh" "-c" (str "dd if=/dev/zero of=" data " count=" count))
     (doseq [k key-list] (set-multi-data n k 0))))
 
@@ -121,8 +110,8 @@
   [n]
   (reify client/Client
     (setup! [this test node]
-      (init-multi-data (nid node) 4096) ;move to core_test in real
-      (client-multi (nid node)))
+      (init-multi-data (util/nid node) 4096) ;move to core_test in real
+      (client-multi (util/nid node)))
     
     (invoke! [this test op]
       (timeout 5000 (assoc op :type :info :error :timeout)
@@ -182,4 +171,63 @@
   (reify checker/Checker
     (check [_ test model history opts]
       (merge {:valid? true} (total-time history)))))
+
+(defn file-nemesis-test [opts]
+  (info "noop test\n")
+  (merge tests/noop-test
+         opts
+         {:nodes [:n1 :n2 :n3]
+          :name "file-nemesis-test"
+          :net net/file-iptables
+          :client (client-nfs nil)
+          ; :nemesis (nemesis/partition-random-node)
+          ;:nemesis (nemesis-test-2)  ; reboot node
+          ;:nemesis (nemesis-test-3)  ; reboot node
+          ;:nemesis (nemesis-test-7)  ; block node's port
+          :nemesis (nemesis0/nemesis-test-9)  ; kill process
+          :generator (->> (gen/mix [r w cas])
+                         (gen/stagger 1)
+                         (gen/nemesis
+                           (gen/seq (cycle [(gen/sleep 5)
+                                            {:type :info, :f :start}
+                                            (gen/sleep 5)
+                                            {:type :info, :f :stop}])))
+                         (gen/time-limit 20))
+          :model (cas-register 0)
+          :checker (checker/compose
+                    {:perf   (checker/perf)
+                     :linear checker/linearizable})}))
+
+(defn file-cap-multi-test [opts]
+  (info "consistency mutli-register test\n")
+  (init-multi-data 1 4096)
+  (merge tests/noop-test
+         opts
+         {:nodes [:n1 :n2 :n3]
+          :name "file-cap-multi-test"
+          :client (client-multi nil)
+          :nemesis (nemesis/partition-random-halves)
+          :generator (->> (gen/mix [rm wm])
+                          (gen/stagger 1)
+                          ;(gen/clients)
+                          (gen/nemesis
+                            (gen/seq (cycle [(gen/sleep 5)
+                                             {:type :info, :f :start}
+                                             (gen/sleep 5)
+                                             {:type :info, :f :stop}])))
+                          (gen/time-limit 10))
+          :model (multi-register (zipmap key-list (repeat 0)))
+          :checker (checker/compose {:timeline     (timeline/html)
+                                     :perf   (checker/perf)
+                                     :linear (independent/checker checker/linearizable)
+                                     })
+          }))
+
+(defn -main
+      "Handles command line arguments. Can either run a test, or a web server for
+      browsing results."
+      [& args]
+      (cli/run! (merge (cli/single-test-cmd {:test-fn file-cap-multi-test})
+                       (cli/serve-cmd))
+                args))
 
