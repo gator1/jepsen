@@ -24,7 +24,9 @@ always been the same for me), and if so it can be determined by installing net-t
     ifconfig
     
 This utility will tell you the ip # of your running container.  You will see a full
-set of analytics files like those in the attached [zipfile](20170428T015646.000Z.zip)    
+set of analytics files like those in the attached [link](20170428T015646.000Z.zip).
+if you are running in a virtual machine, you will browse to whatever ip # the control
+node is, or localhost if you have a browser on your control node.
 
 FIXME
 
