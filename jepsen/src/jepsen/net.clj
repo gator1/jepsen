@@ -4,7 +4,6 @@
 
   TODO: break this up into jepsen.net.proto (polymorphism) and jepsen.net
   (wrapper fns, default args, etc)"
-\
   (:use jepsen.control)
   (:require [jepsen.control.net :as control.net]))
 
