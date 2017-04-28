@@ -1,23 +1,11 @@
 (ns jepsen.kafka
+  (:gen-class)
   (:require  [clojure.tools.logging :refer :all]
              [clojure.java.io :as io]
              [clojure.string     :as str]
              [gregor.core :as gregor]
-             ;[franzy.clients.consumer.protocols :refer :all]
-             ;[franzy.clients.producer.protocols :refer :all]
-             ;[franzy.clients.consumer.client :as consumer]
-             ;[franzy.clients.producer.client :as producer]
-             ;[franzy.clients.producer.defaults :as pd]
-             ;[franzy.clients.consumer.defaults :as cd]
-             ;[franzy.serialization.serializers :as serializers]
-             ;[franzy.serialization.nippy.deserializers :as nippy-deserializers]
-             ;[franzy.serialization.deserializers :as deserializers]
-             ;[clj-kafka.consumer.zk  :as consumer]
-             ;[clj-kafka.producer     :as producer]
-             ;[clj-kafka.new.producer :as nproducer]
-             ;[clj-kafka.zk           :as czk]
-             ;[clj-kafka.core         :as ckafka]
              [jepsen  [db    :as db]
+                      [cli        :as cli]
                       [core  :as jepsen]
                       [client  :as client]
                       [control :as c]
@@ -35,10 +23,8 @@
                       ]
              [jepsen.control :as c :refer  [|]]
              [jepsen.checker.timeline :as timeline]
-             [knossos.op :as op]
+             ;[knossos.op :as op]
              [jepsen.control.util :as cu]
-             [jepsen.zookeeper :as zk]
-             ;[jepsen.os.debian :as debian]
              [jepsen.os.ubuntu :as ubuntu])
   )
 
@@ -47,17 +33,21 @@
 (defn topic-status [node]
   (c/on node (info node "kafka-topics.sh --describe:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic " topic))))))
 
-(defn list-topic []
-      (info "kafka-topics.sh --list:" (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181"))))
-
 (defn create-topic
   [node]
   (Thread/sleep 20)
   (info "creating topic")
+  ; Delete it if it exists
+  (try
+    (info "kafka-topics.sh --delete2:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic " topic))))
+    (Thread/sleep 20)
+    (catch Exception e
+      (info "Didn't need to delete old topic.")
+      ))
   (info "kafka-topics.sh --create:" (c/exec (c/lit (str "/opt/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 5 --topic " topic
                                                           " --config unclean.leader.election.enable=false --config min.insync.replicas=3"
                                                           ))))
-  (list-topic)
+  (info "kafka-topics.sh --list:" (c/exec (c/lit "/opt/kafka/bin/kafka-topics.sh --list --zookeeper localhost:2181")))
   (topic-status node)
   (info "creating topic done")
 )
@@ -81,7 +71,7 @@
   []
   (info "stop! kafka (and zookeeper?).")
   (c/su
-    ;(c/exec :service :zookeeper :stop)
+    (c/exec :service :zookeeper :stop)
     ;(c/exec (c/lit  "ps aux | grep zookeeper | grep -v grep | awk '{ print $2 }' | xargs kill -s kill"))
     (c/exec (c/lit  "ps aux | grep kafka | grep -v grep | awk '{ print $2 }' | xargs kill -s kill"))))
 
@@ -150,14 +140,19 @@
   (c/exec :service :zookeeper :restart)
   (info node "ZK ready"))
 
-(defn get-node-id [node]
-      (Integer.  (re-find #"\d+", (name node))))
+(defn zk-teardown! [test node]
+  (info node "tearing down ZK")
+  (c/su
+    (c/exec :service :zookeeper :stop)
+    (c/exec :rm :-rf
+            (c/lit "/var/lib/zookeeper/version-*")
+            (c/lit "/var/log/zookeeper/*"))))
 
 (defn install! [node sversion kversion]
    ; Install specific versions
   (info "install! Kafka begins" node )
   ; https://www.apache.org/dyn/closer.cgi?path=/kafka/0.10.2.0/kafka_2.12-0.10.2.0.tgz
-  (let [id  (get-node-id node)
+  (let [id  (Integer.  (re-find #"\d+", (name node)))
         ;kafka "kafka_2.11-0.10.0.1"
         kafka (format "kafka_%s-%s" sversion kversion)
         ]
@@ -165,8 +160,8 @@
      ;(info node "install-jdk8!:" (debian/install-jdk8!))
     ;(c/exec :apt-get :install :-y :--force-yes "default-jre")
      ;(info node "apt-get install -y --force-yes wget:" (c/exec :apt-get :install :-y :--force-yes "wget"))
-     ;(info node "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
-     ;(info node "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
+    (info node "rm -rf /opt/:" (c/exec :rm :-rf "/opt/"))
+    (info node "mkdir -p /opt/:" (c/exec :mkdir :-p "/opt/"))
     (c/cd "/opt/"
           ; http://apache.claz.org/kafka/0.10.0.1/kafka_2.11-0.10.0.1.tgz
           ;(info "wget kafka:" (c/exec :wget (format "http://apache.claz.org/kafka/%s/%s.tgz" kversion kafka)))
@@ -182,14 +177,14 @@
 (defn db
     "Kafka DB for a particular version."
     [sversion kversion]
-    (let [zk (zk/db "3.4.8-1")]
+    ;(let [zk (zk/db "3.4.8-1")]
       (reify db/DB
         (setup!  [_ test node]
           (let [id (Integer.  (re-find #"\d+", (name node)))]
             ;(info "setup! zk " node)
             ;(db/setup! zk test node)
-            ;(info "setup! kafka" node)
-            ;(install! node sversion kversion)
+            (info "setup! kafka" node)
+            (install! node sversion kversion)
             ; need to start zk right before kafka deploy
             ;(db/setup! zk test node)
             (zk-deploy test node)
@@ -198,12 +193,16 @@
         ))
         (teardown!  [_ test node]
           ; Comment out for now, saves time on retries, setting up sometimes doesn't work first time, succeeds on second try...
-          ;(info "tearing down Kafka NUKE!!!" node)
-          ;(nuke!)
-          ;(info "Kafka NUKED!!!" node)
+          (info "tearing down Kafka NUKE!!!" node)
+          (nuke!)
+          (info "Kafka NUKED!!!" node)
           ;(info "tearing down Zookeeper")
-          ;(db/teardown! zk test node)
-          ))))
+          (zk-teardown! test node)
+          )
+        db/LogFiles
+        (log-files [_ test node]
+                   (concat ["/var/log/zookeeper/zookeeper.log"] (cu/ls-full "/opt/kafka/logs")))
+             ));)
 
 (defn test-setup-all []
       (let [db (db "2.12" "0.10.2.0")
@@ -220,7 +219,7 @@
 (defn dequeue-only! [op node queue]
   (let [c (consumer node queue)]
     (try
-      (let [cr (gregor/poll c 5000)
+      (let [cr (gregor/poll c 15000)
             message (first cr)
             value (:value message)]
            (if (nil? message)
@@ -233,7 +232,7 @@
      (catch Exception e
        ;(pst e 25)
        ; Exception is probably timeout variant
-       ;(info (str "Dequeue exception: " (.getMessage e) e))
+       (info (str "Dequeue exception: " (.getMessage e) e))
        (assoc op :type :fail :error (.getMessage e) :debug {:node node}))
      (finally (gregor/close c)))))
 
@@ -241,14 +240,14 @@
   (let [node (:node client)
         c (consumer node queue)]
        (try
-         (timeout 10000 (assoc op :type :ok, :value :exhausted, :debug {:node node})
-            (let [cr (gregor/poll c 5000)
+         (timeout 60000 (assoc op :type :ok, :value :exhausted, :debug {:node node})
+            (let [cr (gregor/poll c 15000)
                   message (last cr)]
                  (if (nil? message)
                    (assoc op :type :ok, :value :exhausted, :debug {:node node})
                    (do
                      ;(println "message:" message)
-                     (timeout 5000 (gregor/commit-offsets-async! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}]))
+                     (timeout 15000 (gregor/commit-offsets-async! c [{:topic queue :partition (:partition message) :offset (+ 1 (:offset message))}]))
                      ; If this fails, we will throw an exception and return timeout.  That way we don't consume it.
                      (assoc op :type :ok :value :exhausted :debug {:node node :partition (:partition message) :offset (:offset message)}))))
                   )
@@ -257,13 +256,19 @@
            ; Exception is probably timeout variant
            (info (str "Dequeue exception: " (.getMessage e) e))
            (assoc op :type :ok :value :exhausted :debug {:node node}))
-         (finally (gregor/close c)))))
+         (finally
+           (try
+             (gregor/close c)
+             (catch Exception e
+               (info (str "Drain exception: " (.getMessage e) e))
+               ))
+           ))))
 
 (defn dequeue!
   "Given a channel and an operation, dequeues a value and returns the
   corresponding operation."
   [client queue op]
-  (timeout 10000
+  (timeout 20000
            (assoc op :type :fail :error :timeout :debug {:node (:node client)})
            (dequeue-only! op (:node client) queue)))
 
@@ -275,7 +280,7 @@
       (deref (gregor/send p queue (str value)))
       (gregor/flush p)
      (catch Exception e
-       ;(info (str "Enqueue exception: " (.getMessage e) e))
+       (info (str "Enqueue exception: " (.getMessage e) e))
        (throw e))
      (finally (gregor/close p)))))
 
@@ -301,32 +306,29 @@
 
   (invoke!  [this test op]
      (case  (:f op)
-         :enqueue (do ;(info "enqueue test");(topic-status (:node client))
-                      (enqueue! client queue op))
-         :dequeue  (do ;(topic-status (:node client))
-                     ;(info "dequeue test")
-                       (dequeue! client queue op))
-         :drain    (drain! client queue op)
-            (comment (timeout 10000 (assoc op :type :info :value :timeout)
-                     (loop []
-                           (let [op' (->> (assoc op
-                                                 :f    :dequeue
-                                                 :time (relative-time-nanos))
-                                          util/log-op
-                                          ;(jepsen/conj-op! test)
-                                          (dequeue!
-                                            client queue client-timeout))]
-                                ; Log completion
-                                (->> (assoc op' :time (relative-time-nanos))
-                                     util/log-op
-                                     (jepsen/conj-op! test))
-
-                                (if (= :fail (:type op'))
-                                  ; Done
-                                  (assoc op :type :ok, :value :exhausted)
-
-                                  ; Keep going.
-                                  (recur))))))
+         :enqueue (do
+                    ;(info "Testing enqueue...")
+                    ;(topic-status (:node client))
+                    (enqueue! client queue op))
+         :dequeue  (do
+                     ;(info "Testing dequeue...")
+                     ;(topic-status (:node client))
+                     (dequeue! client queue op))
+         :drain (drain! client queue op)
+            (comment (do
+                   ; Note that this does more dequeues than strictly necessary
+                   ; owing to lazy sequence chunking.
+                   (->> (repeat op)                  ; Explode drain into
+                        (map #(assoc % :f :dequeue)) ; infinite dequeues, then
+                        (map (partial dequeue! client queue))  ; dequeue something
+                        (take-while op/ok?)  ; as long as stuff arrives,
+                        (interleave (repeat op))     ; interleave with invokes
+                        (drop 1)                     ; except the initial one
+                        (map (fn [completion]
+                                 (log-op completion)
+                                 (jepsen/conj-op! test completion)))
+                        dorun)
+                   (assoc op :type :ok :value :exhausted)))
          ))
   )
 
@@ -381,19 +383,27 @@
         (gen/once {:type :invoke
                    :f    :drain})))))
 
-
 (defn kafka-test
-    [sversion kversion]
-      (assoc  tests/noop-test
-             :os ubuntu/os
-             :db  (db sversion kversion)
-             :client  (client)
-             :model   (model/unordered-queue)
-             :nemesis (nemesis/partition-random-halves)
-             :checker    (checker/compose
+    [opts]
+      (merge  tests/noop-test
+              {:name "kafka"
+               :os ubuntu/os
+               :db        (db "2.12" "0.10.2.0")
+               :client    (client)
+               :model     (model/unordered-queue)
+               :nemesis   (nemesis/partition-random-halves)
+               :checker   (checker/compose
                             {:timeline    (timeline/html)
-                             :checker     (checker/perf)
+                             :perf        (checker/perf)
                              :queue       checker/queue
-                            :total-queue checker/total-queue})
-             :generator  gen1
+                             :total-queue checker/total-queue})
+               :generator  gen1}
       ))
+
+(defn -main
+      "Handles command line arguments. Can either run a test, or a web server for
+      browsing results."
+      [& args]
+      (cli/run! (merge (cli/single-test-cmd {:test-fn kafka-test})
+                       (cli/serve-cmd))
+                args))

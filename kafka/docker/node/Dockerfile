@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 MAINTAINER jake@apache.org
 
 RUN apt-get -y -q update
-RUN apt-get install -qqy sudo net-tools wget curl vim man faketime unzip iptables iputils-ping logrotate # sysvinit-core sysvinit sysvinit-utils
+RUN apt-get install -qqy sudo net-tools wget curl vim man faketime ntpdate unzip iptables psmisc tar bzip2 libzip-dev iproute rsyslog iputils-ping logrotate # sysvinit-core sysvinit sysvinit-utils
 
 RUN apt-get -y -q install software-properties-common
 RUN add-apt-repository ppa:openjdk-r/ppa
@@ -24,7 +24,7 @@ ARG scala_version=2.12
 ENV KAFKA_VERSION=$kafka_version SCALA_VERSION=$scala_version
 ADD download-kafka.sh /tmp/download-kafka.sh
 RUN apt-get -y -q install jq
-RUN chmod a+x /tmp/download-kafka.sh && sync && /tmp/download-kafka.sh && tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz -C /opt && rm /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && ln -s /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION} /opt/kafka
+RUN chmod a+x /tmp/download-kafka.sh && sync && /tmp/download-kafka.sh #&& tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz -C /opt && rm /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && ln -s /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION} /opt/kafka
 # We run this in clojure setup to get fresh install.
 #&& tar xfz /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz -C /opt && rm /tmp/kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz && ln -s /opt/kafka_${SCALA_VERSION}-${KAFKA_VERSION} /opt/kafka
 

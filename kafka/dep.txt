@@ -1,0 +1,100 @@
+Warning: JAVA_HOME environment variable is not set.
+[INFO] Scanning for projects...
+[INFO]                                                                         
+[INFO] ------------------------------------------------------------------------
+[INFO] Building jepsen.kafka 0.3.0-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ jepsen.kafka ---
+[INFO] jepsen.kafka:jepsen.kafka:jar:0.3.0-SNAPSHOT
+[INFO] +- org.clojure:clojure:jar:1.8.0:compile
+[INFO] +- jepsen:jepsen:jar:0.1.4:compile
+[INFO] |  +- org.clojure:data.fressian:jar:0.2.1:compile
+[INFO] |  |  \- org.fressian:fressian:jar:0.6.6:compile
+[INFO] |  +- org.clojure:tools.logging:jar:0.3.1:compile
+[INFO] |  +- spootnik:unilog:jar:0.7.13:compile
+[INFO] |  |  +- net.logstash.logback:logstash-logback-encoder:jar:4.2:compile
+[INFO] |  |  |  \- com.fasterxml.jackson.core:jackson-databind:jar:2.4.0:compile
+[INFO] |  |  |     +- com.fasterxml.jackson.core:jackson-annotations:jar:2.4.0:compile
+[INFO] |  |  |     \- com.fasterxml.jackson.core:jackson-core:jar:2.4.0:compile
+[INFO] |  |  +- org.slf4j:slf4j-api:jar:1.7.12:compile
+[INFO] |  |  +- org.slf4j:log4j-over-slf4j:jar:1.7.12:compile
+[INFO] |  |  +- ch.qos.logback:logback-classic:jar:1.1.3:compile
+[INFO] |  |  \- ch.qos.logback:logback-core:jar:1.1.3:compile
+[INFO] |  +- org.clojure:tools.cli:jar:0.3.5:compile
+[INFO] |  +- clj-time:clj-time:jar:0.11.0:compile
+[INFO] |  |  \- joda-time:joda-time:jar:2.8.2:compile
+[INFO] |  +- clj-ssh:clj-ssh:jar:0.5.14:compile
+[INFO] |  |  +- com.jcraft:jsch.agentproxy.usocket-jna:jar:0.0.9:compile
+[INFO] |  |  |  +- net.java.dev.jna:jna:jar:4.1.0:compile
+[INFO] |  |  |  \- net.java.dev.jna:jna-platform:jar:4.1.0:compile
+[INFO] |  |  +- com.jcraft:jsch.agentproxy.usocket-nc:jar:0.0.9:compile
+[INFO] |  |  +- com.jcraft:jsch.agentproxy.sshagent:jar:0.0.9:compile
+[INFO] |  |  +- com.jcraft:jsch.agentproxy.pageant:jar:0.0.9:compile
+[INFO] |  |  +- com.jcraft:jsch.agentproxy.core:jar:0.0.9:compile
+[INFO] |  |  +- com.jcraft:jsch.agentproxy.jsch:jar:0.0.9:compile
+[INFO] |  |  \- com.jcraft:jsch:jar:0.1.53:compile
+[INFO] |  +- gnuplot:gnuplot:jar:0.1.1:compile
+[INFO] |  +- http-kit:http-kit:jar:2.1.18:compile
+[INFO] |  +- ring:ring:jar:1.6.0-beta5:compile
+[INFO] |  |  +- ring:ring-core:jar:1.6.0-beta5:compile
+[INFO] |  |  |  +- ring:ring-codec:jar:1.0.1:compile
+[INFO] |  |  |  |  \- commons-codec:commons-codec:jar:1.6:compile
+[INFO] |  |  |  +- commons-io:commons-io:jar:2.5:compile
+[INFO] |  |  |  +- commons-fileupload:commons-fileupload:jar:1.3.1:compile
+[INFO] |  |  |  +- crypto-random:crypto-random:jar:1.2.0:compile
+[INFO] |  |  |  \- crypto-equality:crypto-equality:jar:1.0.0:compile
+[INFO] |  |  +- ring:ring-devel:jar:1.6.0-beta5:compile
+[INFO] |  |  |  +- clj-stacktrace:clj-stacktrace:jar:0.2.8:compile
+[INFO] |  |  |  \- ns-tracker:ns-tracker:jar:0.3.0:compile
+[INFO] |  |  |     +- org.clojure:tools.namespace:jar:0.2.10:compile
+[INFO] |  |  |     \- org.clojure:java.classpath:jar:0.2.2:compile
+[INFO] |  |  +- ring:ring-jetty-adapter:jar:1.6.0-beta5:compile
+[INFO] |  |  |  \- org.eclipse.jetty:jetty-server:jar:9.2.17.v20160517:compile
+[INFO] |  |  |     +- javax.servlet:javax.servlet-api:jar:3.1.0:compile
+[INFO] |  |  |     +- org.eclipse.jetty:jetty-http:jar:9.2.17.v20160517:compile
+[INFO] |  |  |     |  \- org.eclipse.jetty:jetty-util:jar:9.2.17.v20160517:compile
+[INFO] |  |  |     \- org.eclipse.jetty:jetty-io:jar:9.2.17.v20160517:compile
+[INFO] |  |  \- ring:ring-servlet:jar:1.6.0-beta5:compile
+[INFO] |  +- hiccup:hiccup:jar:1.0.5:compile
+[INFO] |  +- org.clojars.achim:multiset:jar:0.1.0:compile
+[INFO] |  |  \- org.clojure:algo.generic:jar:0.1.2:compile
+[INFO] |  \- byte-streams:byte-streams:jar:0.2.2:compile
+[INFO] |     +- primitive-math:primitive-math:jar:0.1.5:compile
+[INFO] |     +- clj-tuple:clj-tuple:jar:0.2.2:compile
+[INFO] |     \- manifold:manifold:jar:0.1.4:compile
+[INFO] |        \- io.aleph:dirigiste:jar:0.1.3:compile
+[INFO] +- knossos:knossos:jar:0.2.8:compile
+[INFO] |  +- org.clojure:math.combinatorics:jar:0.1.1:compile
+[INFO] |  +- potemkin:potemkin:jar:0.4.3:compile
+[INFO] |  |  \- riddley:riddley:jar:0.1.12:compile
+[INFO] |  +- interval-metrics:interval-metrics:jar:1.0.0:compile
+[INFO] |  +- com.boundary:high-scale-lib:jar:1.0.6:compile
+[INFO] |  +- org.clojars.pallix:analemma:jar:1.0.0:compile
+[INFO] |  \- org.slf4j:slf4j-log4j12:jar:1.7.21:compile
+[INFO] |     \- log4j:log4j:jar:1.2.17:compile
+[INFO] +- jepsen.zookeeper:jepsen.zookeeper:jar:0.1.0-SNAPSHOT:compile
+[INFO] |  \- org.apache.curator:curator-recipes:jar:2.0.1-incubating:compile
+[INFO] |     +- org.apache.curator:curator-framework:jar:2.0.1-incubating:compile
+[INFO] |     |  \- org.apache.curator:curator-client:jar:2.0.1-incubating:compile
+[INFO] |     +- org.apache.zookeeper:zookeeper:jar:3.4.5:compile
+[INFO] |     |  +- jline:jline:jar:0.9.94:compile
+[INFO] |     |  \- org.jboss.netty:netty:jar:3.2.2.Final:compile
+[INFO] |     \- com.google.guava:guava:jar:14.0.1:compile
+[INFO] \- org.clojars.khdegraaf:gregor:jar:0.5.3:compile
+[INFO]    \- org.apache.kafka:kafka_2.12:jar:0.10.2.0:compile
+[INFO]       +- org.apache.kafka:kafka-clients:jar:0.10.2.0:compile
+[INFO]       |  +- net.jpountz.lz4:lz4:jar:1.3.0:compile
+[INFO]       |  \- org.xerial.snappy:snappy-java:jar:1.1.2.6:compile
+[INFO]       +- net.sf.jopt-simple:jopt-simple:jar:5.0.3:compile
+[INFO]       +- com.yammer.metrics:metrics-core:jar:2.2.0:compile
+[INFO]       +- org.scala-lang:scala-library:jar:2.12.1:compile
+[INFO]       +- com.101tec:zkclient:jar:0.10:compile
+[INFO]       \- org.scala-lang.modules:scala-parser-combinators_2.12:jar:1.0.4:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 0.717 s
+[INFO] Finished at: 2017-04-25T17:33:32-07:00
+[INFO] Final Memory: 16M/429M
+[INFO] ------------------------------------------------------------------------

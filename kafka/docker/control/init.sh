@@ -20,7 +20,7 @@ cat <<EOF
 Welcome to Jepsen on Docker
 ===========================
 
-Please run \`docker exec -it jepsen-control bash\` in another terminal to proceed.
+Please run \`docker exec -it jepsen-control-kafka bash\` in another terminal to proceed.
 EOF
 
 # hack for keep this container running

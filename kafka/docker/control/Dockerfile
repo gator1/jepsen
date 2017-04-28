@@ -2,6 +2,7 @@ FROM ubuntu:16.04
 MAINTAINER jake@apache.org
 
 ENV LEIN_ROOT true
+ENV KAFKA_LOG4J_ROOT_LOGLEVEL FATAL
 
 #
 # Jepsen dependencies

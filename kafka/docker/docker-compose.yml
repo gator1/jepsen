@@ -1,7 +1,7 @@
 version: '2'
 services:
   control:
-    container_name: jepsen-control
+    container_name: jepsen-control-kafka
     hostname: control
     build: ./control
     env_file: ./secret/control.env
@@ -13,27 +13,27 @@ services:
       - n4
       - n5
   node:
-    container_name: jepsen-node
+    container_name: jepsen-node-kafka
     build: ./node
     env_file: ./secret/node.env
     privileged: true
   n1:
     extends: node
-    container_name: jepsen-n1
+    container_name: jepsen-n1-kafka
     hostname: n1
   n2:
     extends: node
-    container_name: jepsen-n2
+    container_name: jepsen-n2-kafka
     hostname: n2
   n3:
     extends: node
-    container_name: jepsen-n3
+    container_name: jepsen-n3-kafka
     hostname: n3
   n4:
     extends: node
-    container_name: jepsen-n4
+    container_name: jepsen-n4-kafka
     hostname: n4
   n5:
     extends: node
-    container_name: jepsen-n5
+    container_name: jepsen-n5-kafka
     hostname: n5
