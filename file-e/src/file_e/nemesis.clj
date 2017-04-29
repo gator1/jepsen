@@ -226,10 +226,10 @@
     (setup! [this test node] this)
     (invoke! [this test op]
       (case (:f op)
-        :start (let [proc (str "linux")]
-                 (reset! test-node (rand-nth nodes))
-                 (kill-process @test-node proc)
-                 (assoc op :value (str "stop " proc " on " (.name @test-node))))
+        :start (let [proc (str "linux")
+                     anode (rand-nth nodes)]
+                 (kill-process anode proc)
+                 (assoc op :value (str "stop " proc " on " (.name anode))))
         :stop  (assoc op :value (str "stop nemesis-test-8 >>>>> "))))
     (teardown! [this test] this)))
 
@@ -240,10 +240,10 @@
     (setup! [this test node] this)
     (invoke! [this test op]
       (case (:f op)
-        :start (let [proc (rand-nth ["linux" "cron" "exim4"])]
-                 (reset! test-node (rand-nth nodes))
-                 (kill-process @test-node proc)
-                 (assoc op :value (str "stop " proc " on " (.name @test-node))))
-        :stop  (assoc op :value (str "stop nemesis-test-8 >>>>> "))))
+        :start (let [proc (rand-nth ["linux" "cron" "exim4"])
+                     anode (rand-nth nodes)]
+                 (kill-process anode proc)
+                 (assoc op :value (str "stop " proc " on " (.name anode))))
+        :stop  (assoc op :value (str "stop nemesis-test-9 >>>>> "))))
     (teardown! [this test] this)))
 
