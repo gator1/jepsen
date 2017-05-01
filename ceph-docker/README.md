@@ -88,7 +88,7 @@ ID WEIGHT  TYPE NAME     UP/DOWN REWEIGHT PRIMARY-AFFINITY
 
 
 ```console
-$ ssh ceph-client
+$ ssh client
 root@client:~# rbd create foo --size 4096 -m mon1 --image-feature layering
 root@client:~# rbd map foo --pool rbd --name client.admin -m mon1   # hang up here 
 root@client:~# mkfs.ext4 -m0 /dev/rbd/rbd/foo
@@ -98,3 +98,31 @@ root@client:~# mount /dev/rbd/rbd/foo /mnt/ceph-block-device
 
 see https://github.com/yp-engineering/rbd-docker-plugin/issues/1 
 for more info
+
+```
+probably due to client privilege (or lack of it) the above doesn't work in a
+container. However all is not lost. We can do it from the host.
+
+```
+
+The host is network connected to the host through a bridge. 
+'docker network ls' shows all the networks for docker. docker compose by default
+built a separate bridge using project name. The host can tcp communicate with
+all the containers. So host can do all the rbd stuff. 
+'docket network inspect yourbridge' is used to find mon1's ip address.
+su -
+rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering
+rbd map bar --pool rbd --name client.admin -m 172.18.0.8
+mkfs.ext4 -m0 /dev/rbd/rbd/bar
+mkdir /mnt/ceph-block-bar
+mount /dev/rbd/rbd/bar /mnt/ceph-block-bar
+
+
+It should work and you can see 
+root@ceph-docker:~# ls -l /dev/rbd/rbd
+total 0
+lrwxrwxrwx 1 root root 10 May  1 12:02 a -> ../../rbd6
+lrwxrwxrwx 1 root root 10 May  1 12:38 bar -> ../../rbd8
+lrwxrwxrwx 1 root root 10 May  1 12:32 foo -> ../../rbd7
+
+To run jepsen ceph test from the host.
