@@ -105,18 +105,23 @@ container. However all is not lost. We can do it from the host.
 
 ```
 
-The host is network connected to the host through a bridge. 
+### Host as a ceph client 
+The host is network connected to the containers through a bridge. 
 'docker network ls' shows all the networks for docker. docker compose by default
 built a separate bridge using project name. The host can tcp communicate with
 all the containers. So host can do all the rbd stuff. 
 'docket network inspect yourbridge' is used to find mon1's ip address.
-su -
-rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering
-rbd map bar --pool rbd --name client.admin -m 172.18.0.8
-mkfs.ext4 -m0 /dev/rbd/rbd/bar
-mkdir /mnt/ceph-block-bar
-mount /dev/rbd/rbd/bar /mnt/ceph-block-bar
+Install ceph-client on the host: 'sudo apt-get install ceph-common'
+Get the ceph info "sudo docker cp ceph-client:/etc/ceph /etc/ceph", get the
+ceph.conf and keyring in host's /etc/ceph  
 
+su -  
+rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering  
+rbd map bar --pool rbd --name client.admin -m 172.18.0.8  
+mkfs.ext4 -m0 /dev/rbd/rbd/bar  
+mkdir /mnt/ceph-block-bar  
+mount /dev/rbd/rbd/bar /mnt/ceph-block-bar  
+  
 
 It should work and you can see 
 root@ceph-docker:~# ls -l /dev/rbd/rbd
@@ -125,4 +130,6 @@ lrwxrwxrwx 1 root root 10 May  1 12:02 a -> ../../rbd6
 lrwxrwxrwx 1 root root 10 May  1 12:38 bar -> ../../rbd8
 lrwxrwxrwx 1 root root 10 May  1 12:32 foo -> ../../rbd7
 
-To run jepsen ceph test from the host.
+### To run jepsen ceph test from  cleint
+Magically this can be seen from mon1 etc and client so you can run jepsen test
+on client one as you originally planned. 
