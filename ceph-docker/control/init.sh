@@ -4,20 +4,22 @@
 : "${SSH_PUBLIC_KEY?SSH_PUBLIC_KEY is empty, please use up.sh}"
 
 if [ ! -f ~/.ssh/known_hosts ]; then
+    sleep 1
     mkdir -m 700 ~/.ssh
     echo $SSH_PRIVATE_KEY | perl -p -e 's/↩/\n/g' > ~/.ssh/id_rsa
     chmod 600 ~/.ssh/id_rsa
     echo $SSH_PUBLIC_KEY > ~/.ssh/id_rsa.pub
     echo > ~/.ssh/known_hosts
+    sleep 10
     for f in $(seq 1 3);do
 	ssh-keyscan -t rsa mon$f >> ~/.ssh/known_hosts
-        sshpass -p root ssh-copy-id root@mon$f
+        sshpass -proot ssh-copy-id root@mon$f
     done
     for f in $(seq 0 3);do
 	ssh-keyscan -t rsa osd$f >> ~/.ssh/known_hosts
-        sshpass -p root ssh-copy-id root@osd$f
+        sshpass -proot ssh-copy-id root@osd$f
     done
-    ssh-keyscan -t rsa client >> ~/.ssh/known_hosts
+    ssh-keyscan -trsa client >> ~/.ssh/known_hosts
     sshpass -p root ssh-copy-id root@client
 fi
 

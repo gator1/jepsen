@@ -6,6 +6,15 @@ services:
     build: ./control
     env_file: ./secret/control.env
     privileged: true
+    cap_add:
+       - ALL
+    volumes: 
+       # Specify an absolute path mapping
+       - /dev:/dev 
+       - /sys:/sys 
+       - /bin:/bin 
+       - /sbin:/sbin 
+       - /lib/modules:/lib/modules
     links:
       - mon1
       - mon2
