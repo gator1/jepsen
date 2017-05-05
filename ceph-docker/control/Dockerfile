@@ -18,6 +18,7 @@ RUN apt-get -y -q update && \
         wget \
         sshpass \
         sudo \
+        ack-grep \
 	vim # not required by jepsen itself, just for ease of use
 
 RUN wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add - && \

@@ -4,6 +4,7 @@
             [clojure.edn :as edn]
             [clojure.string :as str]
             [jepsen [core :as jepsen]
+             [cli :as cli]
              [db :as db]
              [control :as c]
              [client :as client]
@@ -19,12 +20,12 @@
 
 ; define disk device, sector
 (def fsdev "/dev/rbd0")
-(def data "/home/vagrant/jepsen/ceph-block/data/temp")
+(def data "/jepsen/ceph-block/data/temp")
 (def offset 12288)
 
 ; define host sudo password and primary node ip
 (def pwd-sudo "root")
-(def node-ip  "172.21.12.16")
+(def node-ip  "172.18.0.11")
 
 (def iter (atom 0))
 
@@ -275,7 +276,23 @@
     (check [_ test model history opts]
       (merge {:valid? true} (check-blk history)))))
 
+(defn ceph-test
+  "Given an options map from the command line runner (e.g. :nodes, :ssh,
+  :concurrency, ...), constructs a test map."
+  [opts]
+  (merge tests/noop-test
+         {}))
+
 ; main entry
 (defn -main
-  "Test entry."
-  [])
+  "Handles command line arguments. Can either run a test, or a web server for
+  browsing results."
+  [& args]
+  (println args)
+  (cli/run! (cli/single-test-cmd {:test-fn ceph-test})
+            args)
+  (comment 
+     (cli/run! (merge (cli/single-test-cmd {:test-fn ceph-test})
+                   (cli/serve-cmd))
+            args))
+)

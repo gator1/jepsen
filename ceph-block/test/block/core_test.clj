@@ -11,8 +11,8 @@
 
 (def ^:private fscap-map
   (assoc tests/noop-test
-    ;:nodes [:osd-1 :osd-2 :osd-3]
-    :nodes [:n1 :n2 :n3]
+    :nodes [:osd0 :osd1 :osd2]
+    ;:nodes [:n1 :n2 :n3]
     :name "fscp-test"
     :concurrency 3
     :client (client)

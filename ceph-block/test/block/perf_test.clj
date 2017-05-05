@@ -11,12 +11,12 @@
   ;tests/noop-test
   (assoc tests/noop-test
     :name "fsperf-test"
-    ;:nodes [:osd-1 :osd-2 :osd-3]
-    :nodes [:n1 :n2 :n3]
+    :nodes [:osd0 :osd1 :osd2]
+    ;:nodes [:n1 :n2 :n3]
     :concurrency 1
     :client (client)
-    ;:nemesis (partition-node :osd-2)
-    :nemesis (partition-node :n2)
+    :nemesis (partition-node :osd1)
+    ;:nemesis (partition-node :n2)
     :generator (->> w
                     (gen/stagger 1)
                     (gen/nemesis

@@ -5,7 +5,7 @@ FROM gators/systemd-sshd
 
 ENV AUTHORIZED_KEYS **None**
 
-RUN rm /etc/apt/apt.conf.d/docker-clean && apt-get update && apt-get install -y sudo net-tools wget curl vim man faketime unzip iptables iputils-ping logrotate 
+RUN rm /etc/apt/apt.conf.d/docker-clean && apt-get update && apt-get install -y sudo net-tools wget sudo ack-grep curl vim man faketime unzip iptables iputils-ping logrotate 
 #RUN apt-get install -y python && \
 #    sed -i "s/UsePrivilegeSeparation.*/UsePrivilegeSeparation no/g" /etc/ssh/sshd_config && \
 #    sed -i "s/PermitRootLogin prohibit-password/PermitRootLogin yes/g" /etc/ssh/sshd_config
