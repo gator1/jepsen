@@ -281,7 +281,28 @@
   :concurrency, ...), constructs a test map."
   [opts]
   (merge tests/noop-test
-         {}))
+      opts
+      {
+        :nodes [:osd0 :osd1 :osd2]
+        ;:nodes [:n1 :n2 :n3]
+        :name "ceph-fscp-test"
+        :concurrency 3
+        :client (client)
+        :nemesis (nemesis/partition-random-halves)
+        :generator (->> (gen/mix [r w cas])
+                        (gen/stagger 1)
+                        (gen/nemesis
+                          (gen/seq (cycle [(gen/sleep 5)
+                                           {:type :info, :f :start}
+                                           (gen/sleep 5)
+                                           {:type :info, :f :stop}])))
+                        (gen/time-limit 100))
+        :model (cas-register 0)
+        ;:checker checker/linearizable)
+        :checker (checker/compose
+                   {:perf   (checker/perf)
+                    :linear checker/linearizable})}
+      ))
 
 ; main entry
 (defn -main
@@ -289,10 +310,9 @@
   browsing results."
   [& args]
   (println args)
-  (cli/run! (cli/single-test-cmd {:test-fn ceph-test})
-            args)
-  (comment 
      (cli/run! (merge (cli/single-test-cmd {:test-fn ceph-test})
                    (cli/serve-cmd))
-            args))
+            args)
 )
+;  (cli/run! (cli/single-test-cmd {:test-fn ceph-test})
+;            args)
