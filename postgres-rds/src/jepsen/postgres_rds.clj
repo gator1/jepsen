@@ -164,7 +164,7 @@
   "Executes body in a transaction, with a timeout, automatically retrying
   conflicts and handling common errors."
   [op [c conn-atom] & body]
-  `(timeout 5000 (assoc ~op :type :info, :value :timed-out)
+  `(timeout 5000 (assoc ~op :type :fail, :error :timeout)
             (with-conn [c# ~conn-atom]
               (j/with-db-transaction [~c c# :isolation :serializable]
                 (with-error-handling ~op
@@ -186,7 +186,10 @@
       [node]
       {:classname   "org.postgresql.jdbc.Driver"
        :subprotocol "postgresql"
-       :subname     (str "//" (name node) ":5432/jepsen")
+       :subname     (str "//" (name node) ":5432/jepsen?"
+                         "loginTimeout=5&"
+                         "socketTimeout=5&"
+                         "tcpKeepAlive=true")
        :user        "jepsen"
        :password    "jepsenpw"})
 
@@ -194,43 +197,54 @@
           "Executes body in a transaction, with a timeout, automatically retrying
           conflicts and handling common errors."
           [op [c node] & body]
-          `(timeout 5000 (assoc ~op :type :info, :value :timed-out)
+          `(timeout 10000 (assoc ~op :type :fail, :error ::timeout)
                     (with-error-handling ~op
                                          (with-txn-retries
                                            (j/with-db-transaction [~c (conn-spec ~node)
                                                                    :isolation :serializable]
                                                                   ~@body)))))
 
-(defrecord BankClient [conn-spec
-                       conn
+(defmacro with-txn-once
+          "Executes body in a transaction, with a timeout, automatically retrying
+          conflicts and handling common errors."
+          [op [c node] & body]
+          `(timeout 10000 (assoc ~op :type :fail, :error ::timeout)
+                     (j/with-db-transaction [~c (conn-spec ~node)
+                                                 :isolation :serializable]
+                                                  ~@body)))
+
+(defmacro timeout-body
+          "Executes body in a transaction, with a timeout, automatically retrying
+          conflicts and handling common errors."
+          [op [c node] & body]
+          `(timeout 10000 (assoc ~op :type :fail, :error :timeout)
+                    (let [~c (conn-spec ~node)]
+                      ~@body)))
+
+(def set-iter (atom 0))
+
+(defrecord BankClient [conn
                        node
                        n
                        starting-balance
                        lock-type
-                       in-place?]
+                       in-place?
+                       set?]
   client/Client
   (setup! [this test node]
-    (let [conn (atom (conn-spec node))]
-      (with-conn [c conn]
-        ; Create table
-                 (comment (j/execute! c ["create table if not exists accounts
-                       (id      int not null primary key,
-                       balance bigint not null)"])
-        (j/execute! c ["delete from accounts"]))
+    ; Create initial accts
+    (dotimes [i n]
+      (try
+        (with-txn-retries
+          (j/insert! c :accounts {:id i, :balance starting-balance}))
+        (catch java.sql.SQLIntegrityConstraintViolationException e nil)
+        (catch org.postgresql.util.PSQLException e
+          (if (re-find #"duplicate key value violates unique constraint"
+                       (.getMessage e))
+            nil
+            (throw e)))))
 
-        ; Create initial accts
-        (dotimes [i n]
-          (try
-            (with-txn-retries
-              (j/insert! c :accounts {:id i, :balance starting-balance}))
-            (catch java.sql.SQLIntegrityConstraintViolationException e nil)
-            (catch org.postgresql.util.PSQLException e
-              (if (re-find #"duplicate key value violates unique constraint"
-                           (.getMessage e))
-                nil
-                (throw e)))))))
-
-    (assoc this :node node, :conn (atom (conn-spec node))))
+    (assoc this :node node))
 
   (invoke! [this test op]
     (try
@@ -257,7 +271,7 @@
                                    :row-fn :balance)
                           first
                           (+ amount))]
-                  (info "starting" "process:" (:process op) "from:" from "to:" to "amount:" amount "b1:" b1 "b2:" b2)
+                  ;(info "starting" "process:" (:process op) "from:" from "to:" to "amount:" amount "b1:" b1 "b2:" b2)
                   (cond (neg? b1)
                         (assoc op :type :fail, :error [:negative from b1])
 
@@ -271,7 +285,8 @@
                               (assoc op :type :ok))
                           (do (j/update! c :accounts {:balance b1} ["id = ?" from])
                               (j/update! c :accounts {:balance b2} ["id = ?" to])
-                              (info "finished" "process:" (:process op) "from:" from "to:" to "amount:" amount "b1:" b1 "b2:" b2)
+                              (if set? (j/insert! c :jepsen (select-keys op [:value])))
+                              ;(info "finished" "process:" (:process op) "from:" from "to:" to "amount:" amount "b1:" b1 "b2:" b2)
                               (assoc op :type :ok))))))))
      (catch Exception e
        (assoc op :type :fail, :error (.getMessage e)))))
@@ -281,17 +296,17 @@
 (defn bank-client
   "Simulates bank account transfers between n accounts, each starting with
   starting-balance."
-  [conn-spec n starting-balance lock-type in-place?]
-  (map->BankClient {:conn-spec conn-spec
-                    :n n
+  [n starting-balance lock-type in-place? set?]
+  (map->BankClient {:n n
                     :starting-balance starting-balance
                     :lock-type lock-type
-                    :in-place? in-place?}))
+                    :in-place? in-place?
+                    :set? set?}))
 
 (defn bank-read
   "Reads the current state of all accounts without any synchronization."
   [_ _]
-  {:type :invoke, :f :read})
+  {:type :invoke, :f :bank-read})
 
 (defn bank-transfer
   "Transfers a random amount between two randomly selected accounts."
@@ -316,7 +331,7 @@
          (check [this test model history opts]
       (let [bad-reads (->> history
                            (r/filter op/ok?)
-                           (r/filter #(= :read (:f %)))
+                           (r/filter #(= :bank-read (:f %)))
                            (r/map (fn [op]
                                   (let [balances (:value op)]
                                     (cond (not= (:n model) (count balances))
@@ -428,23 +443,16 @@
              :concurrency 10
              :nodes [:n1] ; n1 is single server
              :model  {:n n :total (* n initial-balance)}
-             :client (bank-client (fn conn-spec [_]
-                                    ; We ignore the nodes here and just use the single node
-                                    {:classname   "org.postgresql.Driver"
-                                     :subprotocol "postgresql"
-                                     :subname     (str "//" (name node) ":5432/jepsen")
-                                     :user        "jepsen"
-                                     :password    "jepsenpw"})
-                                    n initial-balance lock-type in-place?)
+             :client (bank-client n initial-balance lock-type in-place? false)
              :generator (gen/phases
                           ;(gen/clients (gen/once cn/slow))
                           (->> (gen/mix [bank-read bank-diff-transfer])
                                (gen/clients)
                                (gen/stagger 1/10)
                                (gen/nemesis
-                               (gen/seq (cycle [(gen/sleep 5)
+                               (gen/seq (cycle [(gen/sleep 10)
                                                 {:type :info :f :start}
-                                                (gen/sleep 5)
+                                                (gen/sleep 10)
                                                 {:type :info :f :stop}])))
                                (gen/time-limit 60))
                           (gen/log "waiting for quiescence")
@@ -465,14 +473,49 @@
         (gen/phases
           (->> client
                (gen/nemesis
-                 (gen/seq (cycle [(gen/sleep 5)
+                 (gen/seq (cycle [(gen/sleep 10)
                                   {:type :info, :f :start}
-                                  (gen/sleep 5)
+                                  (gen/sleep 10)
                                   {:type :info, :f :stop}])))
                (gen/time-limit 60))
           (gen/nemesis (gen/once {:type :info, :f :stop}))
           (gen/log "waiting for quiescence")
           (gen/sleep 10))))
+
+(defn bank-set-test
+      [opts]
+      (basic-test
+        (merge opts
+               {:name "bank set"
+                :concurrency 10
+                :nodes [:n1] ; n1 is single server
+                :model  {:n n :total (* n initial-balance) :set true}
+                :client (bank-client n initial-balance lock-type in-place? true)
+                :generator (gen/phases
+                             ;(gen/clients (gen/once cn/slow))
+                             (->> (gen/mix [bank-read bank-diff-transfer])
+                                  (gen/clients)
+                                  (gen/stagger 1/10)
+                                  (gen/nemesis
+                                    (gen/seq (cycle [(gen/sleep 10)
+                                                     {:type :info :f :start}
+                                                     (gen/sleep 10)
+                                                     {:type :info :f :stop}])))
+                                  (gen/time-limit 60))
+                             (gen/log "waiting for quiescence")
+                             (gen/sleep 30)
+                             ;(gen/clients (gen/once cn/fast))
+                             (gen/clients (gen/once bank-read))
+                             (->> {:type :invoke, :f :read, :value nil}
+                                  gen/once
+                                  gen/clients)
+                             )
+                :nemesis (slowing (partition-n1-control) 0.1)
+                :checker (checker/compose
+                           {:timeline (timeline/html)
+                            :perf (checker/perf)
+                            :bank (bank-checker)
+                            :set checker/set})})))
 
 (defn set-client
       [node]
@@ -487,15 +530,17 @@
                      (set-client node))
 
              (invoke! [this test op]
-                      (with-txn3 op [c node]
-                                (try
-                                  (case (:f op)
-                                        :add  (do (j/insert! c :jepsen (select-keys op [:value]))
-                                                  (assoc op :type :ok))
-                                        :read (->> (j/query c ["select * from jepsen"])
-                                                   (mapv :value)
-                                                   (into (sorted-set))
-                                                   (assoc op :type :ok, :value))))))
+                      (try
+                        (with-txn-once op [c node]
+                          (case (:f op)
+                                :add  (do (j/insert! c :jepsen (select-keys op [:value]))
+                                          (assoc op :type :ok))
+                                :read (->> (j/query c ["select * from jepsen"])
+                                           (mapv :value)
+                                           (into (sorted-set))
+                                           (assoc op :type :ok, :value))))
+                        (catch Exception e
+                          (assoc op :type :fail, :error (.getMessage e)))))
 
              (teardown! [_ test])))
 
@@ -514,7 +559,8 @@
                                            :f :add
                                            :value))
                              gen/seq
-                             (gen/delay 1/10)
+                             (gen/stagger 1/10)
+                             ;(gen/delay 1/10)
                              with-nemesis)
                         (->> {:type :invoke, :f :read, :value nil}
                              gen/once
