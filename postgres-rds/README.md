@@ -33,7 +33,7 @@ address the problem.
 So let's see what we can do to demonstrate and reproduce this problem in the Jepsen framework.   You can
 get a copy of this project from 
  
-    git clone https://github.com/khdegraaf/jepsen
+    git clone https://github.com/gator1/jepsen
     
 Once you have a clone, cd into the docker subdirectory and run
 
