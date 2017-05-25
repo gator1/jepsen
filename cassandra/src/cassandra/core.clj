@@ -431,7 +431,7 @@
   (merge tests/noop-test
          {:name    (str "cassandra " name)
           :os      debian/os
-          :db      (db "2.1.8")
+          :db      (db "2.1.17")
           :bootstrap (atom #{})
           :decommission (atom #{})}
          opts))

@@ -3,7 +3,8 @@
   :url "http://github.com/riptano/jepsen"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :repl-options {:init-ns cassandra.core}
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/java.jmx "0.3.1"]
                  [org.clojars.jkni/jepsen "0.0.7-SNAPSHOT"]
                  [clojurewerkz/cassaforte "2.1.0-beta1"]
