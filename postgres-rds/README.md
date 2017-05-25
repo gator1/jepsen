@@ -22,8 +22,8 @@ your order, or even getting the same order twice.
 Well one way to look at it is that any client server interaction is a special case of a two node
 cluster.  ACID consistency defines serializability and consistency guarantees with respect to the
 server's response to various clients requests.  But it doesn't address the issue of the client and
-the server disagreeing on what took place.  It is entirely possible that a transaction failed, but due
-to a network problem, the successful confirmation got lost as a result.
+the server disagreeing on what took place.  It is entirely possible that a transaction succeeded, but due
+to a network problem, the successful confirmation got lost as a result.  The client would think it failed then.
 In CAP theoretical terms, you encountered a Partition, and Consistency suffered.  The ugly truth of the matter
 is that the basic transaction API's do nothing to address this problem, and clients generally don't try to fix or
 address the problem.
@@ -33,7 +33,7 @@ address the problem.
 So let's see what we can do to demonstrate and reproduce this problem in the Jepsen framework.   You can
 get a copy of this project from 
  
-    git clone https://github.com/gator1/jepsen
+    git clone https://github.com/khdegraaf/jepsen
     
 Once you have a clone, cd into the docker subdirectory and run
 
@@ -47,6 +47,8 @@ running in
 once you are in docker, you will start at the top level jepsen subdirectory so cd into the postgres-rds subdirectory and run
     
     lein run test
+    
+## Test #1 (very slow network)    
     
 In order to maximize the chance of catching these in transit errors, we have configured our code to
 slow down the network by 0.5sec for each network message, and run with 40 concurrent worker threads to increase
@@ -70,11 +72,13 @@ and then the results
 ![Screenshot #4](images/Screen4.png?raw=true "Screenshot #4") 
    
 As you can see from the results, 1364 writes were attempted, and 240 of these were unacknowledged.  Of those 240
-unacknowledged results, 197 of them were failures.  But 43 of them were recovered when all if the written data
+unacknowledged results, 197 of them were failures.  But 43 of them were recovered when all of the written data
 was examined at the end.  These 43 cases represent the possibility of our problem scenario, albeit with a perhaps
 exaggerated probability due to slowing down the network.  But network partitions in the real world could approach 
 this, it depends on network latency, as well as the size and latency of the database transaction in the
 application itself.  
+
+## Test #2 (very fast network)
 
 If we push this to the highest possible throughput by dropping out all network slowness we will see
 best case results.  This is because our test database transaction consists of inserting a single integer 
@@ -88,6 +92,8 @@ the same, as it is determined by the length of the network failure, divided by t
 of concurrent threads.  But as you will see, the number of false negatives is significantly reduced down to 3.  But
 a round-trip transaction cost of only 10ms is pretty unrealistic.  There is little to no network latency running on
 a local network in docker.
+
+## Test #3 (realistic network)
 
 In a cloud hosted environment, a more realistic transaction request latency might be more like 100ms plus whatever
 time the database takes to do the commit.  If we modify the network slowness to 100ms, we will get 200ms round-trip 
@@ -106,6 +112,8 @@ and
 and
 
 ![Throughput Rate #1](images/rate1.png?raw=true "Throughput Rate #1")
+
+## Conclusion
 
 But this problem is fixable.  If a transaction, rather than being a single distributed commit call, instead
 performed the commit in two phases, a prepare phase that confirmed that it was possible and performed any needed
