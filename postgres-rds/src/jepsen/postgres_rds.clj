@@ -18,7 +18,7 @@
        [net :as net]
        [nemesis :as nemesis]
        [generator :as gen]
-       [util :refer [timeout meh]]]
+       [util :as util :refer [timeout meh]]]
       [jepsen.control.util :as cu]
       [jepsen.checker.timeline :as timeline]
       [jepsen.control.net :as cn]
@@ -236,7 +236,7 @@
     (dotimes [i n]
       (try
         (with-txn-retries
-          (j/insert! c :accounts {:id i, :balance starting-balance}))
+          (j/insert! conn :accounts {:id i, :balance starting-balance}))
         (catch java.sql.SQLIntegrityConstraintViolationException e nil)
         (catch org.postgresql.util.PSQLException e
           (if (re-find #"duplicate key value violates unique constraint"
@@ -482,6 +482,23 @@
           (gen/log "waiting for quiescence")
           (gen/sleep 10))))
 
+(def check-availability
+  "count ratio between successful OK response and attempted invokes of any sort."
+  (reify checker/Checker
+         (check [this test model history opts]
+                (let [attempts (count (->> history (r/filter op/invoke?) (into []))) ; (->> history (r/filter op/invoke?) (r/map (fn [_] 1)) (r/fold +)) ;
+                      ok (count (->> history  (r/filter op/ok?) (into []))) ; (->> history  (r/filter op/ok?) (r/map (fn [_] 1)) (r/fold +)) ;
+                      not-ok (- attempts ok)
+                      ]
+
+                     {:valid?          true
+                      :attempts        attempts
+                      :ok              ok
+                      :not-ok          not-ok
+                      :ok-frac         (util/fraction ok attempts)
+                      :not-ok-frac     (util/fraction not-ok attempts)
+                      }))))
+
 (defn bank-set-test
       [opts]
       (basic-test
@@ -513,6 +530,7 @@
                 :nemesis (slowing (partition-n1-control) 0.1)
                 :checker (checker/compose
                            {:timeline (timeline/html)
+                            :availability check-availability
                             :perf (checker/perf)
                             :bank (bank-checker)
                             :set checker/set})})))
@@ -568,6 +586,7 @@
            :nemesis (slowing (partition-n1-control) 0.1)
            :checker (checker/compose
                       {:perf (checker/perf)
+                       :availability check-availability
                        :set  checker/set})})))
 
 (defn -main
