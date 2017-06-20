@@ -22,7 +22,7 @@ control and node's Dockerfile and control's init.sh to see how it was done.
 The following is a step by step guide as how to set up ceph on those nodes manaully. It is possible to set up ceph using ceph-ansible automatically. 
 The following guide is based on https://github.com/carmstrong/multinode-ceph-vagrant. 
 
-control/Dockerfile made a directory /root/test-cluster and the control node's shee is there when you 'docker exec'. 
+control/Dockerfile made a directory /root/test-cluster and the control node's shell is there when you 'docker exec'. 
 
 All commands are counducted in /root/test-cluster directory unless otherwise noted.
 
