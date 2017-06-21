@@ -20,11 +20,11 @@ Run tmux in the docker image to get multiple Windows
     CTRL+b, %
 
     Then you can use:
-    CTRL+b, <- and -> 
+    CTRL+b, <- and ->
 
     (Left arrow and right arrow)
 
-    to switch windows. 
+    to switch windows.
 
 =========================
 
@@ -37,3 +37,9 @@ To start run
     ./up.sh
     docker exec -it jepsen-control bash
 ````
+
+From the control node, you can try etcd demo following [README](https://github.com/jepsen-io/jepsen/blob/master/doc/scaffolding.md)
+
+```
+cd /jepsen/etcdemo
+```
