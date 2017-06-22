@@ -121,7 +121,7 @@
          opts
          {:name    "zookeeper"
           :os      debian/os
-          :db      (db "3.4.5+dfsg-2+deb8u1")
+          :db      (db "3.4.5+dfsg-2+deb8u2")
           :client  (client nil nil)
           :nemesis (nemesis/partition-random-halves)
           :generator (->> (gen/mix [r w cas])
@@ -144,4 +144,3 @@
   (cli/run! (merge (cli/single-test-cmd {:test-fn zk-test})
                    (cli/serve-cmd))
            args))
-
