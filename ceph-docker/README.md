@@ -111,7 +111,7 @@ The host is network connected to the containers through a bridge.
 built a separate bridge using project name. The host can tcp communicate with
 all the containers. So host can do all the rbd stuff. 
 'docket network inspect yourbridge' is used to find mon1's ip address.
-Install ceph-client on the host: 'sudo apt-get install ceph-common'
+Install ceph-client on the host: 'sudo apt-get install ceph-common'  
 Get the ceph info "sudo docker cp ceph-client:/etc/ceph /etc/ceph", get the
 ceph.conf and keyring in host's /etc/ceph  
 
@@ -124,11 +124,11 @@ mount /dev/rbd/rbd/bar /mnt/ceph-block-bar
   
 
 It should work and you can see 
-root@ceph-docker:~# ls -l /dev/rbd/rbd
-total 0
-lrwxrwxrwx 1 root root 10 May  1 12:02 a -> ../../rbd6
-lrwxrwxrwx 1 root root 10 May  1 12:38 bar -> ../../rbd8
-lrwxrwxrwx 1 root root 10 May  1 12:32 foo -> ../../rbd7
+root@ceph-docker:~# ls -l /dev/rbd/rbd 
+total 0 
+lrwxrwxrwx 1 root root 10 May  1 12:02 a -> ../../rbd6 
+lrwxrwxrwx 1 root root 10 May  1 12:38 bar -> ../../rbd8 
+lrwxrwxrwx 1 root root 10 May  1 12:32 foo -> ../../rbd7 
 
 ### To run jepsen ceph test from  cleint
 Magically this can be seen from mon1 etc and client so you can run jepsen test
