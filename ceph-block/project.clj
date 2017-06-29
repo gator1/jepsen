@@ -6,7 +6,7 @@
   :repl-options {:init-ns block.core}
   :main block.core
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [jepsen "0.1.6-SNAPSHOT"]
+                 [jepsen "0.1.5"]
                  [org.clojure/tools.trace "0.7.9"]
                ;  [knossos "0.2.8"]
                 ])

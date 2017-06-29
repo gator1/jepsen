@@ -20,7 +20,7 @@
 
 ; define disk device, sector
 (def fsdev "/dev/rbd0")
-(def data "/jepsen/ceph-block/data/temp")
+(def data "./data/temp")
 (def offset 12288)
 
 ; define host sudo password and primary node ip
@@ -38,6 +38,7 @@
 
 (defn sudo-cmd
   [cmd]
+  ;(println (str "sh -c " (str "echo " pwd-sudo " | sudo -S " cmd)))
   (sh "sh" "-c" (str "echo " pwd-sudo  " | sudo -S " cmd)))
 
 ; get data on specific position from disk
@@ -289,7 +290,7 @@
         :concurrency 3
         :client (client)
         :nemesis (nemesis/partition-random-halves)
-        :generator (->> (gen/mix [r w cas])
+        :generator (->> (gen/mix [r w])
                         (gen/stagger 1)
                         (gen/nemesis
                           (gen/seq (cycle [(gen/sleep 5)
@@ -297,11 +298,12 @@
                                            (gen/sleep 5)
                                            {:type :info, :f :stop}])))
                         (gen/time-limit 100))
-        :model (cas-register 0)
-        ;:checker checker/linearizable)
+        :model (register 0)
+        ;:checker checker/linearizable
         :checker (checker/compose
-                   {:perf   (checker/perf)
-                    :linear checker/linearizable})}
+                  {:perf   (checker/perf)
+                    :linear checker/linearizable})
+	}
       ))
 
 ; main entry
