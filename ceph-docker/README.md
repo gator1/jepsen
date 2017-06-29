@@ -112,19 +112,19 @@ built a separate bridge using project name. The host can tcp communicate with
 all the containers. So host can do all the rbd stuff. 
 'docket network inspect yourbridge' is used to find mon1's ip address.
 Install ceph-client on the host: 'sudo apt-get install ceph-common'  
-Get the ceph info "sudo docker cp ceph-client:/etc/ceph /etc/ceph", get the
+Get the ceph info "sudo docker cp ceph-client:/etc/ceph /etc", get the
 ceph.conf and keyring in host's /etc/ceph  
 
 su -  
-rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering  
-rbd map bar --pool rbd --name client.admin -m 172.18.0.8  
+rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering # 172.18.0.8 is ip # of mon1, it may differ for you  
+rbd map bar --pool rbd --name client.admin -m 172.18.0.8  # 172.18.0.8 is ip # of mon1, it may differ for you
 mkfs.ext4 -m0 /dev/rbd/rbd/bar  
 mkdir /mnt/ceph-block-bar  
 mount /dev/rbd/rbd/bar /mnt/ceph-block-bar  
   
 
 It should work and you can see 
-root@ceph-docker:~# ls -l /dev/rbd/rbd 
+root@ceph-docker:~# ls -l /dev/rbd/rbd # actual results may vary
 total 0 
 lrwxrwxrwx 1 root root 10 May  1 12:02 a -> ../../rbd6 
 lrwxrwxrwx 1 root root 10 May  1 12:38 bar -> ../../rbd8 
