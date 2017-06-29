@@ -291,16 +291,16 @@
         :client (client)
         :nemesis (nemesis/partition-random-halves)
         :generator (gen/phases
-		   (->> (gen/mix [r w])
-                        (gen/stagger 1)
-                        (gen/nemesis
-                          (gen/seq (cycle [(gen/sleep 5)
-                                           {:type :info, :f :start}
-                                           (gen/sleep 5)
-                                           {:type :info, :f :stop}])))
-                        (gen/time-limit 30))
-		   (gen/log "waiting for recovery")
-		   (gen/sleep 5))
+		                  (->>  (gen/mix [r w])
+                            (gen/stagger 1)
+                            (gen/nemesis
+                              (gen/seq (cycle [(gen/sleep 5)
+                                               {:type :info, :f :start}
+                                               (gen/sleep 5)
+                                               {:type :info, :f :stop}])))
+                            (gen/time-limit 30))
+		                  (gen/log "waiting for recovery")
+		                  (gen/sleep 5))
         :model (register 0)
         ;:checker checker/linearizable
         :checker (checker/compose
