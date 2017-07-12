@@ -115,13 +115,14 @@ Install ceph-client on the host: 'sudo apt-get install ceph-common'
 Get the ceph info "sudo docker cp ceph-client:/etc/ceph /etc", get the
 ceph.conf and keyring in host's /etc/ceph  
 
+```
 su -  
 rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering # 172.18.0.8 is ip # of mon1, it may differ for you  
 rbd map bar --pool rbd --name client.admin -m 172.18.0.8  # 172.18.0.8 is ip # of mon1, it may differ for you
 mkfs.ext4 -m0 /dev/rbd/rbd/bar  
 mkdir /mnt/ceph-block-bar  
 mount /dev/rbd/rbd/bar /mnt/ceph-block-bar  
-  
+```  
 
 It should work and you can see 
 root@ceph-docker:~# ls -l /dev/rbd/rbd # actual results may vary
