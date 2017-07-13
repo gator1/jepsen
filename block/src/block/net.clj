@@ -66,11 +66,11 @@
 
 (defn stop-port
       [port node]
-      (on node (su (exec (str "/etinit.d/network stop " port)))))
+      (on node (su (exec (str "/etc/init.d/network stop " port)))))
 
 (defn start-port
       [port node]
-      (on node (su (exec (str "/etinit.d/network start " port)))))
+      (on node (su (exec (str "/etc/init.d/network start " port)))))
 
 (defn slow-port
       [port node]
@@ -78,7 +78,7 @@
 
 (defn unslow-port
       [port node]
-      (on node (su (exec :tc :qdisc :dev :dev port :root :netem :delay :100ms :100ms))))
+      (on node (su (exec :tc :qdisc :del :dev port :root :netem :delay :100ms :100ms))))
 
 (defn loss-port
       [port node]
@@ -94,7 +94,7 @@
 
 (defn undup-port
       [port node]
-      (on node (su (exec :tc :qdisc :add :dev port :root :netem :duplicate :100%))))
+      (on node (su (exec :tc :qdisc :del :dev port :root :netem :duplicate :100%))))
 
 (defn reorder-port
       [port node]
