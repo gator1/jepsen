@@ -33,22 +33,19 @@ All commands are counducted in /root/test-cluster directory unless otherwise not
    osd pool default size = 3 # because we want 3 osd disk initially  
    mon_clock_drift_allowed = 1  
    osd max object name len = 256  
-   osd max object namespace len = 64  
+   osd max object namespace len = 64
+   filestore xattr use omap = true
 
 3. ceph-deploy install --release=kraken control  mon1 mon2 mon3 osd0 osd1 osd2 client  # list all the nodes, this install ceph software  
    this will take some time to finish
 
 4. ceph-deploy mon create-initial #starts monitor (three nodes because of step 1)
 
-5.  ssh osd0  
-    mkdir /var/local/osd0 && sudo chown ceph:ceph /var/local/osd0   
-    exit  
-    ssh osd1  
-    mkdir /var/local/osd1 && sudo chown ceph:ceph /var/local/osd1   
-    exit  
-    ssh osd2  
-    mkdir /var/local/osd2 && sudo chown ceph:ceph /var/local/osd2   
-    exit  
+5.
+    for NODE in osd0 osd1 osd2; do ssh $NODE "mkdir /var/local/$NODE && sudo chown ceph:ceph /var/local/$NODE"; done
+
+    for NODE in osd0 osd1 osd2; do ssh $NODE "ls -l /var/local"; done
+
 
 6.  ceph-deploy osd prepare osd0:/var/local/osd0 osd1:/var/local/osd1 osd2:/var/local/osd2  
     ceph-deploy osd activate  osd0:/var/local/osd0 osd1:/var/local/osd1 osd2:/var/local/osd2  
@@ -62,7 +59,7 @@ may not be necessary, maybe because I use root? anyway if there is complain abou
 8. chmod +r ./ceph.client.admin.keyring    
    ssh mon1 chmod +r /etc/ceph/ceph.client.admin.keyring   
    ssh mon2 chmod +r /etc/ceph/ceph.client.admin.keyring   
-   ssh mon2 chmod +r /etc/ceph/ceph.client.admin.keyring   
+   ssh mon3 chmod +r /etc/ceph/ceph.client.admin.keyring
 
 
 9. ceph health 
@@ -91,7 +88,7 @@ ID WEIGHT  TYPE NAME     UP/DOWN REWEIGHT PRIMARY-AFFINITY
 $ ssh client
 root@client:~# rbd create foo --size 4096 -m mon1 --image-feature layering
 root@client:~# rbd map foo --pool rbd --name client.admin -m mon1   # hang up here 
-root@client:~# mkfs.ext4 -m0 /dev/rbd/rbd/foo
+root@client:~# mkfs.xfs /dev/rbd/rbd/foo
 root@client:~# mkdir /mnt/ceph-block-device
 root@client:~# mount /dev/rbd/rbd/foo /mnt/ceph-block-device
 ```
@@ -116,12 +113,14 @@ Get the ceph info "sudo docker cp ceph-client:/etc/ceph /etc", get the
 ceph.conf and keyring in host's /etc/ceph  
 
 ```
-su -  
-rbd create bar --size 4096 -m 172.18.0.8  --image-feature layering # 172.18.0.8 is ip # of mon1, it may differ for you  
-rbd map bar --pool rbd --name client.admin -m 172.18.0.8  # 172.18.0.8 is ip # of mon1, it may differ for you
-mkfs.ext4 -m0 /dev/rbd/rbd/bar  
-mkdir /mnt/ceph-block-bar  
-mount /dev/rbd/rbd/bar /mnt/ceph-block-bar  
+su -
+export NAME=bar
+export MON1=172.18.0.8 # 172.18.0.8 is ip # of mon1, it may differ for you
+rbd create $NAME --size 4096 -m $MON1 --image-feature layering
+rbd map $NAME --pool rbd --name client.admin -m $MON1
+mkfs.xfs /dev/rbd/rbd/$NAME
+mkdir /mnt/ceph-block-device
+mount /dev/rbd/rbd/$NAME /mnt/ceph-block-device
 ```  
 
 It should work and you can see 
