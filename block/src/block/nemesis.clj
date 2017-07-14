@@ -19,19 +19,18 @@
              (setup! [this test node] this)
              (invoke! [this test op]
                       (case (:f op)
-                            :start  (reset! test-nodes (fn-nodes (:nodes test)))
-                                    (doall (map fn-start @test-nodes))
-                                    (assoc op :value (str  "start " desc " nemesis <<<<< "))
-                            :stop   (doall (map fn-stop @test-nodes))
-                                    (assoc op :value (str  "stop " desc " nemesis >>>>> "))))
+                            :start  (do (reset! test-nodes (fn-nodes (:nodes test)))
+                                        (doall (map fn-start @test-nodes))
+                                        (assoc op :value (str  "start " desc "on " (vec @test-nodes) " nemesis <<<<< ")))
+                            :stop   (do (doall (map fn-stop @test-nodes))
+                                        (assoc op :value (str  "stop " desc "on " (vec @test-nodes) " nemesis >>>>> ")))))
              (teardown! [this test] this)))
 
-(defn rand-1 [test] (rand-nth (:nodes test)))
-(defn rand-2 [test] (take 2 (shuffle (:nodes test))))
-(defn rand-3 [test] (take 3 (shuffle (:nodes test))))
-(defn rand-n [test]
-      (let [nodes (:nodes test)
-            n (+ 1 (rand-int (- (count nodes) 2)))]
+(defn rand-1 [nodes] (take 1 (shuffle nodes)))
+(defn rand-2 [nodes] (take 2 (shuffle nodes)))
+(defn rand-3 [nodes] (take 3 (shuffle nodes)))
+(defn rand-n [nodes]
+      (let [n (+ 1 (rand-int (count nodes) 1))]
            (take n (shuffle nodes))))
 
 (defn nemesis-storage-net-down [fn-nodes test]
@@ -49,6 +48,7 @@
 (defn nemesis-slow-management [fn-nodes test]
       (nemesis-nodes fn-nodes "slow-management" (partial slow-port :eth0) (partial unslow-port :eth0)))
 
+; ssh comes in over port on eth0, so need to ssh via storage plan port or this will cause trouble
 (defn nemesis-loss-management [fn-nodes test]
       (nemesis-nodes fn-nodes "loss-management" (partial loss-port :eth0) (partial unloss-port :eth0)))
 
