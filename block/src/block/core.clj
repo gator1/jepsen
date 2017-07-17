@@ -150,6 +150,11 @@
     (swap! iter inc)
     (split-node (nth nodes (inc i)) nodes)))
 
+(defn split-nodes
+  [split-nodes all-nodes]
+  (let [coll (vec (clojure.set/difference (set all-nodes) (set split-nodes)))]
+       [split-nodes coll]))
+
 ; assure last element of nodes is control node
 (defn split-node-ctrl
   [nodes]
@@ -176,6 +181,10 @@
   []
   (reset! iter 0)
   (nemesis/partitioner (comp nemesis/complete-grudge split-node-ctrl)))
+
+(defn partition-nodes
+  [nodes]
+  (nemesis/partitioner (comp nemesis/complete-grudge (partial split-nodes nodes))))
 
 ; partition clients host
 (defn drop-net
