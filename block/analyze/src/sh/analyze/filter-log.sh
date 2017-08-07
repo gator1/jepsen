@@ -1,0 +1,1 @@
+cat -v  $1 | grep 'jepsen' | grep -e ':invoke' -e ':ok' -e ':timeout' -e ':failed' -e ":nemesis" -e "indeterminate" | sed -e 's/\sjepsen.core:\s\+Process\s\+\([0-9]\+\)\s\+indeterminate.*/ jepsen.util \1 :info :read nil :inconsistent/g'
