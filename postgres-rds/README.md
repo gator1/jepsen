@@ -123,7 +123,7 @@ standard out of the box libraries to do this, and clients generally don't go to 
 
 So in the meanwhile, reducing the window for problems is the main practical step cloud or database vendors can do.
 We can use the Jepsen framework to assess the likelihood of this problem occuring under various circumstances.
-By doing so, we can take steps to make and measure mprovements in this area as well as compare that probability to 
+By doing so, we can take steps to make and measure improvements in this area as well as compare that probability to 
 competitive products.
 
 
